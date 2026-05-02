@@ -1,0 +1,80 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+
+# Local Python environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python packaging and native extension build outputs
+build/
+dist/
+*.egg-info/
+.eggs/
+*.so
+*.pyd
+*.dll
+*.lib
+*.exp
+*.o
+*.obj
+*.ptx
+lib/pointops/build/
+lib/pointops_old/build/
+
+# Training outputs, checkpoints, and experiment logs
+exp/
+runs/
+logs/
+wandb/
+tensorboard/
+events.out.tfevents*
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.engine
+
+# Local datasets and generated point-cloud results
+data/*
+!data/s3dis/
+data/s3dis/*
+!data/s3dis/s3dis_names.txt
+*.npy
+*.npz
+*.ply
+*.pcd
+*.las
+*.laz
+
+# Upstream reference checkout and temporary workspace files
+tmp/
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# IDE, editor, and OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+Thumbs.db
+Desktop.ini
+.DS_Store

@@ -1,0 +1,58 @@
+DATA:
+  data_name: s3dis
+  data_root: data
+  test_area: 6
+  classes: 3
+  fea_dim: 3
+  voxel_size: 0.04 
+  voxel_max: 30000 # 80000
+  loop: 50  #原来30
+
+TRAIN:
+  arch: pointtransformer_v3
+  use_xyz: True
+  sync_bn: False #只用一个 GPU（train_gpu: [0]），sync_bn=True 不会改变 BN 的统计量，也不会改善训练效果，只会多一点计算开销。
+  ignore_label: 255
+  enable_ema: True      # 启用解码后 EMA 增强
+  ema_factor: 32          # 分组数，需整除 dec_channels[0]（默认64，可用32或16）
+  ema_stages:               # 指定哪些decoder stage使用EMA
+                          # [0] 只最后一个stage（保守配置，推荐先试这个）
+                          # [0,1] 最后两个stage
+                          # null 所有stage都使用（如果效果好的话）
+  ema_fusion_weight: 0.1  # EMA融合权重的初始值（可学习参数），建议范围0.05-0.2
+  train_gpu: [0]
+  workers: 16  # data loader workers
+  batch_size: 2 # batch size for training
+  batch_size_val: 2 # batch size for validation during training, memory and speed tradeoff
+  base_lr: 0.001 #原来0.5
+  epochs: 100
+  start_epoch: 0
+  step_epoch: 20  
+  multiplier: 0.1
+  momentum: 0.9 #优化器动量参数（通常用于 SGD）
+  weight_decay:  0.0001 
+  drop_rate: 0.05
+  manual_seed: 7777
+  print_freq: 1
+  save_freq: 1
+  save_path:    #模型保存路径（可留空，默认保存到 runs/ 目录）。
+  weight:  # path to initial weight (default: none)
+  resume:  # path to latest checkpoint (default: none)
+  evaluate: True  # evaluate on validation set, extra gpu memory needed and small batch_size_val is recommend
+  eval_freq: 1
+Distributed:
+  dist_url: tcp://localhost:8888
+  dist_backend: 'nccl'
+  multiprocessing_distributed: True
+  world_size: 1
+  rank: 0
+
+TEST:
+
+  split: test  # split in [train, val and test]
+  test_gpu: [0]
+  test_workers: 4
+  batch_size_test: 2 #原来为4
+  model_path:
+  save_folder:
+  names_path: 
