@@ -514,6 +514,108 @@ class MLP(nn.Module):
         return x
 
 
+class PointGRN(PointModule):
+    """
+    Point-wise Global Response Normalization for point-cloud sequences.
+
+    该模块参考 ConvNeXt V2 中的 GRN（Global Response Normalization）思想，
+    但针对点云语义分割的变长 batch 做了适配：每个样本使用自己的 offset
+    独立统计通道响应，避免不同场景点数不一致时互相污染统计量。
+
+    与现有 EMA 的区别：
+    - EMA 主要做 1D 序列上的全局/局部空间上下文重标定；
+    - GRN 只在通道维度建立响应竞争，不生成空间注意力图，因此功能不重复。
+    """
+
+    def __init__(self, channels, eps=1e-6):
+        super().__init__()
+        self.channels = channels
+        self.eps = eps
+
+        # gamma / beta 采用零初始化，使新模块在训练初期近似恒等映射。
+        # 这样可以保留原 PTv3 + EMA 的稳定收敛路径，再由训练逐步学习通道响应校准。
+        self.gamma = nn.Parameter(torch.zeros(1, channels))
+        self.beta = nn.Parameter(torch.zeros(1, channels))
+
+    def forward(self, point: Point):
+        assert {"feat", "offset"}.issubset(point.keys())
+
+        feat = point.feat
+        offset = point.offset
+        bincount = offset2bincount(offset)
+        start = 0
+        output_list = []
+
+        for cnt in bincount:
+            cnt = int(cnt)
+            if cnt > 0:
+                sample_feat = feat[start : start + cnt]
+
+                # 对当前样本的每个通道计算 L2 全局响应，形状为 (1, C)。
+                # 点云 batch 中每个场景点数不同，逐样本统计能避免长场景支配短场景。
+                response = torch.norm(sample_feat, p=2, dim=0, keepdim=True)
+
+                # 用通道响应的均值归一化，形成通道间的竞争系数。
+                # eps 只用于数值稳定，不改变类别或数据相关策略。
+                response_norm = response / (response.mean(dim=1, keepdim=True) + self.eps)
+
+                # 残差式 GRN：零初始化时输出等于输入，训练后学习通道响应增强/抑制。
+                sample_feat = sample_feat + self.gamma * (sample_feat * response_norm) + self.beta
+                output_list.append(sample_feat)
+
+            start += cnt
+
+        point.feat = torch.cat(output_list, dim=0) if output_list else feat
+        if "sparse_conv_feat" in point.keys():
+            point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(point.feat)
+        return point
+
+
+class GRNMLP(PointModule):
+    """
+    带 GRN 的 PTv3 MLP 分支。
+
+    顺序保持为 Linear -> GELU -> Dropout -> PointGRN -> Linear -> Dropout。
+    GRN 插在 MLP 扩展通道之后，与 ConvNeXt V2 的接入位置一致；它属于
+    Block 内部特征校准，不改分类头、不改损失函数、不改数据处理。
+    """
+
+    def __init__(
+        self,
+        in_channels,
+        hidden_channels=None,
+        out_channels=None,
+        act_layer=nn.GELU,
+        drop=0.0,
+        enable_grn=True,
+        grn_eps=1e-6,
+    ):
+        super().__init__()
+        out_channels = out_channels or in_channels
+        hidden_channels = hidden_channels or in_channels
+        self.fc1 = nn.Linear(in_channels, hidden_channels)
+        self.act = act_layer()
+        self.drop = nn.Dropout(drop)
+        self.grn = PointGRN(hidden_channels, eps=grn_eps) if enable_grn else None
+        self.fc2 = nn.Linear(hidden_channels, out_channels)
+
+    def forward(self, point: Point):
+        assert {"feat", "offset"}.issubset(point.keys())
+
+        point.feat = self.fc1(point.feat)
+        point.feat = self.act(point.feat)
+        point.feat = self.drop(point.feat)
+
+        if self.grn is not None:
+            point = self.grn(point)
+
+        point.feat = self.fc2(point.feat)
+        point.feat = self.drop(point.feat)
+        if "sparse_conv_feat" in point.keys():
+            point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(point.feat)
+        return point
+
+
 class Block(PointModule):
     def __init__(
         self,
@@ -535,6 +637,8 @@ class Block(PointModule):
         enable_flash=True,
         upcast_attention=True,
         upcast_softmax=True,
+        enable_grn=True,
+        grn_eps=1e-6,
     ):
         super().__init__()
         self.channels = channels
@@ -569,12 +673,14 @@ class Block(PointModule):
         )
         self.norm2 = PointSequential(norm_layer(channels))
         self.mlp = PointSequential(
-            MLP(
+            GRNMLP(
                 in_channels=channels,
                 hidden_channels=int(channels * mlp_ratio),
                 out_channels=channels,
                 act_layer=act_layer,
                 drop=proj_drop,
+                enable_grn=enable_grn,
+                grn_eps=grn_eps,
             )
         )
         self.drop_path = PointSequential(
@@ -874,6 +980,8 @@ class PointTransformerV3(PointModule):
         ema_factor=32,
         ema_stages=None,  # 指定哪些decoder stage使用EMA，None表示所有stage都使用
         ema_fusion_weight=0.1,  # EMA融合权重，初始值较小
+        enable_grn=True,  # 默认启用GRN通道响应校准，不依赖YAML新增参数
+        grn_eps=1e-6,  # GRN归一化的数值稳定项
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -977,6 +1085,8 @@ class PointTransformerV3(PointModule):
                         enable_flash=enable_flash,
                         upcast_attention=upcast_attention,
                         upcast_softmax=upcast_softmax,
+                        enable_grn=enable_grn,
+                        grn_eps=grn_eps,
                     ),
                     name=f"block{i}",
                 )
@@ -1027,6 +1137,8 @@ class PointTransformerV3(PointModule):
                             enable_flash=enable_flash,
                             upcast_attention=upcast_attention,
                             upcast_softmax=upcast_softmax,
+                            enable_grn=enable_grn,
+                            grn_eps=grn_eps,
                         ),
                         name=f"block{i}",
                     )
