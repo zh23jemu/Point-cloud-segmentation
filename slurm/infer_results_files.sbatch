@@ -41,6 +41,12 @@ export CXX=$(which g++)
 export CUDAHOSTCXX=$(which g++)
 export TORCH_CUDA_ARCH_LIST="7.0"
 
+# 与训练脚本保持一致，限制 CPU 数值库线程，避免小规模推理时被底层线程环境影响。
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+
 export PYTHONPATH=./
 
 # 如服务器需要 conda，请取消下面两行注释，并按实际环境名修改。

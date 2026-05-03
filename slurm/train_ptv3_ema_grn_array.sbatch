@@ -45,6 +45,13 @@ export CXX=$(which g++)
 export CUDAHOSTCXX=$(which g++)
 export TORCH_CUDA_ARCH_LIST="7.0"
 
+# 小数据集 + HPC 环境下，多进程 DataLoader/BLAS 线程有时会在进入首个 batch 前触发底层 FPE。
+# 这里限制 CPU 数值库线程，训练命令再覆盖 workers=0，优先保证服务器可稳定复现实验。
+export OMP_NUM_THREADS=1
+export OPENBLAS_NUM_THREADS=1
+export MKL_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+
 export PYTHONPATH=./
 
 # 如服务器需要 conda，请取消下面两行注释，并按实际环境名修改。
@@ -88,7 +95,8 @@ fi
 
 "${PYTHON_BIN}" -u tool/train.py \
     --config="${CONFIG_PATH}" \
-    save_path "${SAVE_PATH}"
+    save_path "${SAVE_PATH}" \
+    workers 0
 
 echo "============================================================"
 echo "Finished time: $(date '+%Y-%m-%d %H:%M:%S')"
