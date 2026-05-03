@@ -326,7 +326,7 @@ class SerializedAttention(PointModule):
         proj_drop=0.0,
         order_index=0,
         enable_rpe=False,
-        enable_flash=True,
+        enable_flash=False,  # V100服务器不稳定支持flash-attn，默认走已有的普通attention分支
         upcast_attention=True,
         upcast_softmax=True,
     ):
@@ -972,7 +972,7 @@ class PointTransformerV3(PointModule):
         pre_norm=True,
         shuffle_orders=True,  
         enable_rpe=False,
-        enable_flash=True,
+        enable_flash=False,  # V100服务器不稳定支持flash-attn，默认走已有的普通attention分支
         upcast_attention=False ,
         upcast_softmax=False ,
 
