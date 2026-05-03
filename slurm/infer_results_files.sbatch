@@ -27,6 +27,10 @@ set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
 mkdir -p slurm/logs
 
+# 加载服务器提供的 Python 3.10 模块，确保推理与训练使用同一套 Python ABI。
+module purge
+module load python/3.10.14
+
 export PYTHONPATH=./
 
 # 如服务器需要 conda，请取消下面两行注释，并按实际环境名修改。
