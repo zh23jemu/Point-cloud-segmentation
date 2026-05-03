@@ -30,6 +30,16 @@ mkdir -p slurm/logs
 # 加载服务器提供的 Python 3.10 模块，确保推理与训练使用同一套 Python ABI。
 module purge
 module load python/3.10.14
+module load gcc/11.4.0
+
+# 集群没有 CUDA module，但计算节点提供 /usr/local/cuda；显式设置后与训练环境保持一致。
+export CUDA_HOME=/usr/local/cuda
+export PATH=${CUDA_HOME}/bin:${PATH}
+export LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}
+export CC=$(which gcc)
+export CXX=$(which g++)
+export CUDAHOSTCXX=$(which g++)
+export TORCH_CUDA_ARCH_LIST="7.0"
 
 export PYTHONPATH=./
 

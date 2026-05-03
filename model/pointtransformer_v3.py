@@ -634,7 +634,7 @@ class Block(PointModule):
         order_index=0,
         cpe_indice_key=None,
         enable_rpe=False,
-        enable_flash=True,
+        enable_flash=False,  # V100服务器不稳定支持flash-attn，默认走已有的普通attention分支
         upcast_attention=True,
         upcast_softmax=True,
         enable_grn=True,
