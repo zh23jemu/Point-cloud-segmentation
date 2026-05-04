@@ -649,6 +649,10 @@ class Block(PointModule):
                 channels,
                 channels,
                 kernel_size=3,
+                # 显式设置 padding=1，保证 3x3x3 子流形卷积按中心对齐生成邻域。
+                # 服务器 V100 + CUDA 12.8 + spconv-cu120 环境下，默认 padding 在 CPE
+                # 第一层会触发底层 FPE；该设置不改变数据或训练策略，只稳定 spconv 索引构建。
+                padding=1,
                 bias=True,
                 indice_key=cpe_indice_key,
             ),
