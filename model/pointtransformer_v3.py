@@ -655,6 +655,9 @@ class Block(PointModule):
                 padding=1,
                 bias=True,
                 indice_key=cpe_indice_key,
+                # V100(sm70) 上 spconv 的默认卷积算法可能走到不稳定的隐式 GEMM 路径。
+                # CPE 是局部位置编码分支，显式使用 Native 算法更保守，优先保证训练可运行。
+                algo=spconv.ConvAlgo.Native,
             ),
             nn.Linear(channels, channels),
             norm_layer(channels),
