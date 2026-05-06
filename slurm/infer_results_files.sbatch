@@ -85,10 +85,10 @@ if [ ! -f "${MODEL_PATH}" ]; then
 fi
 
 declare -a INPUT_FILES=(
-    "data/val/data2_formatted_downsampled.txt"
-    "data/test/shanqu6_final.txt"
-    "data/test/shanqu2_final.txt"
-    "data/test/data11_formatted_downsampled.txt"
+    "data/val/data2_formatted_downsampled (1).txt"
+    "data/test/shanqu6_final (1).txt"
+    "data/test/shanqu2_final (1).txt"
+    "data/test/data11_formatted_downsampled (1).txt"
 )
 
 for INPUT_FILE in "${INPUT_FILES[@]}"; do
