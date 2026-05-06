@@ -201,7 +201,12 @@ def main():
     # ============ 修改损失函数部分 ============
     # 定义类别权重 [2, 2, 0.5, ...]，根据你的类别数量调整
     # 假设有13个类别（S3DIS数据集）
-    class_weights = torch.FloatTensor([10.0, 10.0, 1]).cuda()
+    class_weights_cfg = getattr(args, 'class_weights', [10.0, 10.0, 1.0])
+    if len(class_weights_cfg) != args.classes:
+        raise ValueError("class_weights 长度必须与 classes 一致，当前为 {} vs {}".format(len(class_weights_cfg), args.classes))
+    class_weights = torch.FloatTensor(class_weights_cfg).cuda()
+    ce_loss_weight = getattr(args, 'ce_loss_weight', 1.0)
+    lovasz_loss_weight = getattr(args, 'lovasz_loss_weight', 1.0)
     
     # 定义两个损失函数
     criterion_ce = nn.CrossEntropyLoss(weight=class_weights, ignore_index=args.ignore_label).cuda()
@@ -209,12 +214,13 @@ def main():
     
     # 定义损失函数配置
     criteria_config = [
-        {"criterion": criterion_ce, "loss_weight": 1.0},
-        {"criterion": criterion_lovasz, "loss_weight": 1.0}
+        {"criterion": criterion_ce, "loss_weight": ce_loss_weight},
+        {"criterion": criterion_lovasz, "loss_weight": lovasz_loss_weight}
     ]
     
     logger.info("Class weights: {}".format(class_weights))
-    logger.info("Loss functions: CrossEntropyLoss (weight=1.0) + LovaszLoss (weight=1.0)")
+    logger.info("Loss functions: CrossEntropyLoss (weight={:.2f}) + LovaszLoss (weight={:.2f})".format(
+        ce_loss_weight, lovasz_loss_weight))
     # =========================================
     
     # 加载类别名称，如果names_path未设置则使用默认名称
@@ -481,4 +487,3 @@ def test(model, criteria_config, names):
 
 if __name__ == '__main__':
     main()
-    

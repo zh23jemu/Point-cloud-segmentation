@@ -71,6 +71,48 @@ def get_logger():
     return logger
 
 
+def build_train_transform(args):
+    """
+    根据配置构建训练增强。
+
+    这轮优化重点是补齐几何增强，避免模型过度依赖训练集中的固定朝向和局部布局，
+    从而提升 class1 在测试文件之间的稳定性。
+    """
+    transforms = []
+
+    if hasattr(args, 'aug_rotate_z') and args.aug_rotate_z:
+        transforms.append(t.RandomRotate(angle=[0, 0, args.aug_rotate_z]))
+    if hasattr(args, 'aug_scale_range') and args.aug_scale_range:
+        transforms.append(t.RandomScale(args.aug_scale_range))
+    if hasattr(args, 'aug_flip_p') and args.aug_flip_p > 0:
+        transforms.append(t.RandomFlip(p=args.aug_flip_p))
+    if hasattr(args, 'aug_shift') and args.aug_shift:
+        transforms.append(t.RandomShift(shift=args.aug_shift))
+    if hasattr(args, 'aug_jitter_sigma') and args.aug_jitter_sigma > 0:
+        transforms.append(t.RandomJitter(sigma=args.aug_jitter_sigma, clip=args.aug_jitter_clip))
+
+    transforms.extend([
+        t.ChromaticAutoContrast(p=getattr(args, 'aug_auto_contrast_p', 0.2)),
+        t.ChromaticTranslation(
+            p=getattr(args, 'aug_chromatic_translation_p', 0.95),
+            ratio=getattr(args, 'aug_chromatic_translation_ratio', 0.05)
+        ),
+        t.ChromaticJitter(
+            p=getattr(args, 'aug_chromatic_jitter_p', 0.95),
+            std=getattr(args, 'aug_chromatic_jitter_std', 0.005)
+        ),
+        t.HueSaturationTranslation(
+            hue_max=getattr(args, 'aug_hue_max', 0.5),
+            saturation_max=getattr(args, 'aug_saturation_max', 0.2)
+        )
+    ])
+
+    if hasattr(args, 'aug_drop_color_p') and args.aug_drop_color_p > 0:
+        transforms.append(t.RandomDropColor(p=args.aug_drop_color_p))
+
+    return t.Compose(transforms)
+
+
 def worker_init_fn(worker_id):
     random.seed(args.manual_seed + worker_id)
 
@@ -388,14 +430,19 @@ def main_worker(gpu, ngpus_per_node, argss):
     if args.sync_bn:
        model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
     
-    class_weights = torch.FloatTensor([10.0, 10.0, 1]).cuda()
+    class_weights_cfg = getattr(args, 'class_weights', [10.0, 10.0, 1.0])
+    if len(class_weights_cfg) != args.classes:
+        raise ValueError("class_weights 长度必须与 classes 一致，当前为 {} vs {}".format(len(class_weights_cfg), args.classes))
+    class_weights = torch.FloatTensor(class_weights_cfg).cuda()
+    ce_loss_weight = getattr(args, 'ce_loss_weight', 1.0)
+    lovasz_loss_weight = getattr(args, 'lovasz_loss_weight', 1.0)
     
     criterion_ce = nn.CrossEntropyLoss(weight=class_weights, ignore_index=args.ignore_label).cuda()
     criterion_lovasz = LovaszLoss(mode="multiclass", ignore_index=args.ignore_label).cuda()
     
     criteria_config = [
-        {"criterion": criterion_ce, "loss_weight": 1.0},
-        {"criterion": criterion_lovasz, "loss_weight": 1.0}
+        {"criterion": criterion_ce, "loss_weight": ce_loss_weight},
+        {"criterion": criterion_lovasz, "loss_weight": lovasz_loss_weight}
     ]
 
     optimizer = torch.optim.SGD(model.parameters(), lr=args.base_lr, momentum=args.momentum, weight_decay=args.weight_decay)
@@ -409,7 +456,8 @@ def main_worker(gpu, ngpus_per_node, argss):
         logger.info("=> creating model ...")
         logger.info("Classes: {}".format(args.classes))
         logger.info("Class weights: {}".format(class_weights))
-        logger.info("Loss functions: CrossEntropyLoss (weight=1.0) + LovaszLoss (weight=1.0)")
+        logger.info("Loss functions: CrossEntropyLoss (weight={:.2f}) + LovaszLoss (weight={:.2f})".format(
+            ce_loss_weight, lovasz_loss_weight))
         logger.info(model)
     if args.distributed:
         torch.cuda.set_device(gpu)
@@ -452,10 +500,28 @@ def main_worker(gpu, ngpus_per_node, argss):
             if main_process():
                 logger.info("=> no checkpoint found at '{}'".format(args.resume))
 
-    train_transform = t.Compose([t.RandomScale([0.9, 1.1]), t.ChromaticAutoContrast(), t.ChromaticTranslation(), t.ChromaticJitter(), t.HueSaturationTranslation()])
-    train_data = S3DIS(split='train', data_root=args.data_root, test_area=args.test_area, voxel_size=args.voxel_size, voxel_max=args.voxel_max, transform=train_transform, shuffle_index=True, loop=args.loop)
+    train_transform = build_train_transform(args)
+    train_data = S3DIS(
+        split='train',
+        data_root=args.data_root,
+        test_area=args.test_area,
+        voxel_size=args.voxel_size,
+        voxel_max=args.voxel_max,
+        transform=train_transform,
+        shuffle_index=True,
+        loop=args.loop,
+        crop_bias_classes=getattr(args, 'crop_bias_classes', None),
+        crop_bias_prob=getattr(args, 'crop_bias_prob', 0.0),
+        crop_bias_min_points=getattr(args, 'crop_bias_min_points', 1)
+    )
     if main_process():
             logger.info("train_data samples: '{}'".format(len(train_data)))
+            logger.info("Train transform: {}".format([transform.__class__.__name__ for transform in train_transform.transforms]))
+            logger.info("Crop bias classes: {}, prob: {}, min_points: {}".format(
+                getattr(args, 'crop_bias_classes', None),
+                getattr(args, 'crop_bias_prob', 0.0),
+                getattr(args, 'crop_bias_min_points', 1)
+            ))
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_data)
     else:
