@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/tool/train.py", line 814, in <module>
+    main()
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/tool/train.py", line 340, in main
+    S3DIS(split='train', data_root=args.data_root, test_area=args.test_area)
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/util/s3dis.py", line 12, in __init__
+    self.data_list = sorted([f for f in os.listdir(os.path.join(data_root, split)) if f.endswith('.txt')])
+FileNotFoundError: [Errno 2] No such file or directory: 'data/train'

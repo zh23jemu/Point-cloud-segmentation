@@ -1,0 +1,32 @@
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:47: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  _TORCH_CUSTOM_FWD = amp.custom_fwd(cast_inputs=torch.float16)
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:97: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:163: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:243: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:332: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:369: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:389: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:412: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+Traceback (most recent call last):
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/tool/train.py", line 814, in <module>
+    main()
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/tool/train.py", line 350, in main
+    main_worker(args.train_gpu, args.ngpus_per_node, args)
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/tool/train.py", line 387, in main_worker
+    model = Model(**model_kwargs)
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/model/pointtransformer_v3.py", line 1069, in __init__
+    Block(
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/model/pointtransformer_v3.py", line 660, in __init__
+    self.attn = SerializedAttention(
+  File "/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/model/pointtransformer_v3.py", line 353, in __init__
+    assert flash_attn is not None, "Make sure flash_attn is installed."
+AssertionError: Make sure flash_attn is installed.
