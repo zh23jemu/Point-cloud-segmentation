@@ -31,7 +31,7 @@ dist/
 lib/pointops/build/
 lib/pointops_old/build/
 
-# Training outputs, checkpoints, and experiment logs
+# Training outputs: only keep lightweight progress artifacts under exp/
 exp/*
 !exp/seg/
 exp/seg/*
@@ -42,6 +42,8 @@ exp/seg/*
 !exp/seg/**/plots/*.png
 !exp/seg/**/plots/*.csv
 !exp/seg/**/events.out.tfevents*
+exp/seg/**/inference_results/*.txt
+exp/seg/**/inference_results/*.npy
 runs/
 logs/
 !slurm/logs/
