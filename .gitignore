@@ -32,9 +32,21 @@ lib/pointops/build/
 lib/pointops_old/build/
 
 # Training outputs, checkpoints, and experiment logs
-exp/
+exp/*
+!exp/seg/
+exp/seg/*
+!exp/seg/**/
+!exp/seg/**/*.log
+!exp/seg/**/best_results.txt
+!exp/seg/**/plots/
+!exp/seg/**/plots/*.png
+!exp/seg/**/plots/*.csv
+!exp/seg/**/events.out.tfevents*
 runs/
 logs/
+!slurm/logs/
+!slurm/logs/*.out
+!slurm/logs/*.err
 wandb/
 tensorboard/
 events.out.tfevents*
