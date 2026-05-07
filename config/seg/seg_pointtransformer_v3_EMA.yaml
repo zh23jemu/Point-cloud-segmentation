@@ -7,9 +7,6 @@ DATA:
   voxel_size: 0.04 
   voxel_max: 30000 # 80000
   loop: 50  #原来30
-  crop_bias_classes: [1]    # 训练裁剪时优先围绕哪些类别取中心；这里的标签是 0 开始，因此 [1] 表示最终的 class1
-  crop_bias_prob: 0.7       # 不是每个 crop 都强行偏向 class1，保留一部分全局随机性，避免过拟合
-  crop_bias_min_points: 128 # 只有当 crop 中目标类点数足够时才启用偏置，避免噪声样本放大
 
 TRAIN:
   arch: pointtransformer_v3
@@ -28,23 +25,6 @@ TRAIN:
   batch_size: 2 # batch size for training
   batch_size_val: 2 # batch size for validation during training, memory and speed tradeoff
   base_lr: 0.001 #原来0.5
-  class_weights: [8.0, 12.0, 1.0] # 适度提高 class1 的监督强度，同时略降 class0，避免模型过于偏向容易类别
-  ce_loss_weight: 1.0
-  lovasz_loss_weight: 1.0
-  aug_rotate_z: 1.0              # 绕 z 轴随机旋转，取值 1.0 表示角度范围 [-pi, pi]
-  aug_scale_range: [0.9, 1.1]
-  aug_flip_p: 0.5
-  aug_shift: [0.1, 0.1, 0.0]
-  aug_jitter_sigma: 0.005
-  aug_jitter_clip: 0.02
-  aug_auto_contrast_p: 0.2
-  aug_chromatic_translation_p: 0.95
-  aug_chromatic_translation_ratio: 0.05
-  aug_chromatic_jitter_p: 0.95
-  aug_chromatic_jitter_std: 0.005
-  aug_hue_max: 0.5
-  aug_saturation_max: 0.2
-  aug_drop_color_p: 0.2          # 降低对颜色线索的依赖，提升跨文件稳定性
   epochs: 100
   start_epoch: 0
   step_epoch: 20  

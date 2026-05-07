@@ -12,6 +12,7 @@ from addict import Dict
 import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import spconv.pytorch as spconv
 import torch_scatter
 from timm.models.layers import DropPath
@@ -616,6 +617,101 @@ class GRNMLP(PointModule):
         return point
 
 
+class PointStateMixer(PointModule):
+    """
+    轻量级点云序列混合模块。
+
+    模块类型说明：
+    - 属于“状态空间 / Mamba 类长序列建模”方向的轻量化实现，目标是补足 EMA
+      之外的顺序依赖建模能力。
+    - 不改分类头、不改损失函数、不改数据增强，也不引入新的序列化规则，只在
+      当前 PTv3 已有的点特征流上做线性复杂度的双向序列混合。
+
+    设计动机：
+    - EMA 更偏向通道与局部上下文重标定；
+    - 这里增加的是沿点序列方向的前向 / 反向信息传播，两者功能互补而不重复。
+    """
+
+    def __init__(
+        self,
+        channels,
+        kernel_size=5,
+        expansion=2,
+        proj_drop=0.0,
+        fusion_weight=0.1,
+    ):
+        super().__init__()
+        hidden_channels = channels * expansion
+        padding = kernel_size // 2
+
+        self.norm = nn.GroupNorm(1, channels)
+        self.in_proj = nn.Conv1d(channels, hidden_channels, kernel_size=1, bias=False)
+        self.forward_mixer = nn.Conv1d(
+            hidden_channels,
+            hidden_channels,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=hidden_channels,
+            bias=False,
+        )
+        self.backward_mixer = nn.Conv1d(
+            hidden_channels,
+            hidden_channels,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=hidden_channels,
+            bias=False,
+        )
+        self.out_proj = nn.Conv1d(hidden_channels, channels, kernel_size=1, bias=False)
+        self.channel_gate = nn.Conv1d(channels, channels, kernel_size=1, bias=False)
+        self.drop = nn.Dropout(proj_drop)
+
+        # 用较小的初始融合权重保持保守起步，尽量降低新模块对基线的扰动。
+        self.fusion_weight = nn.Parameter(torch.tensor(fusion_weight))
+
+    def _mix_single_sample(self, sample_feat):
+        """
+        输入形状：(N, C)
+        输出形状：(N, C)
+        """
+        x = sample_feat.transpose(0, 1).unsqueeze(0)  # (1, C, N)
+        x_norm = self.norm(x)
+
+        # 全局池化生成通道门控，控制状态混合的注入强度。
+        gate = torch.sigmoid(self.channel_gate(x_norm.mean(dim=-1, keepdim=True)))
+
+        state = self.in_proj(x_norm)
+        state = F.gelu(state)
+
+        forward_state = self.forward_mixer(state)
+        backward_state = self.backward_mixer(state.flip(-1)).flip(-1)
+        mixed_state = 0.5 * (forward_state + backward_state)
+        mixed_state = self.out_proj(self.drop(F.gelu(mixed_state)))
+
+        x = x + self.fusion_weight * gate * mixed_state
+        return x.squeeze(0).transpose(0, 1)
+
+    def forward(self, point: Point):
+        assert {"feat", "offset"}.issubset(point.keys())
+        feat = point.feat
+        offset = point.offset
+
+        bincount = offset2bincount(offset)
+        start = 0
+        output_list = []
+        for cnt in bincount:
+            cnt = int(cnt)
+            if cnt > 0:
+                sample_feat = feat[start : start + cnt]
+                output_list.append(self._mix_single_sample(sample_feat))
+            start += cnt
+
+        point.feat = torch.cat(output_list, dim=0) if output_list else feat
+        if "sparse_conv_feat" in point.keys():
+            point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(point.feat)
+        return point
+
+
 class Block(PointModule):
     def __init__(
         self,
@@ -989,6 +1085,11 @@ class PointTransformerV3(PointModule):
         ema_fusion_weight=0.1,  # EMA融合权重，初始值较小
         enable_grn=True,  # 默认启用GRN通道响应校准，不依赖YAML新增参数
         grn_eps=1e-6,  # GRN归一化的数值稳定项
+        enable_ssm=True,  # 默认启用序列混合模块，不依赖YAML新增参数
+        ssm_kernel_size=5,  # 使用较小卷积核做稳定的局部状态传播
+        ssm_expansion=2,  # 轻量扩展倍率，避免显著增加显存
+        ssm_stages=(1, 0),  # 默认只作用于高分辨率decoder stage，更贴近分割细节
+        ssm_fusion_weight=0.1,  # 与残差分支融合的初始权重
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -1049,6 +1150,11 @@ class PointTransformerV3(PointModule):
         self.enable_ema = enable_ema
         self.ema_stages = ema_stages  # 如果为None，则所有stage都使用
         self.ema_fusion_weight = ema_fusion_weight
+        self.enable_ssm = enable_ssm
+        self.ssm_stages = set(ssm_stages) if ssm_stages is not None else None
+        self.ssm_kernel_size = ssm_kernel_size
+        self.ssm_expansion = ssm_expansion
+        self.ssm_fusion_weight = ssm_fusion_weight
 
         # encoder
         enc_drop_path = [
@@ -1164,6 +1270,21 @@ class PointTransformerV3(PointModule):
                                 fusion_weight=self.ema_fusion_weight  # 可学习的融合权重
                             ),
                             name=f"ema{s}"
+                        )
+
+                if self.enable_ssm:
+                    # 只在高分辨率decoder stage注入序列混合，尽量保守地增强细粒度类别边界。
+                    use_ssm_here = (self.ssm_stages is None) or (s in self.ssm_stages)
+                    if use_ssm_here:
+                        dec.add(
+                            PointStateMixer(
+                                channels=dec_channels[s],
+                                kernel_size=self.ssm_kernel_size,
+                                expansion=self.ssm_expansion,
+                                proj_drop=proj_drop,
+                                fusion_weight=self.ssm_fusion_weight,
+                            ),
+                            name=f"ssm{s}"
                         )
                 
                 self.dec.add(module=dec, name=f"dec{s}")
