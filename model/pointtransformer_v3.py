@@ -622,8 +622,9 @@ class PointStateMixer(PointModule):
     轻量级点云序列混合模块。
 
     模块类型说明：
-    - 属于“状态空间 / Mamba 类长序列建模”方向的轻量化实现，目标是补足 EMA
-      之外的顺序依赖建模能力。
+    - 属于“状态空间 / Mamba 类长序列建模”方向的轻量化实现，参考
+      Mamba(2023)、Vision Mamba(2024) 和 PointMamba(2024) 中利用线性复杂度
+      序列建模增强长程依赖的思路，目标是补足 EMA 之外的顺序依赖建模能力。
     - 不改分类头、不改损失函数、不改数据增强，也不引入新的序列化规则，只在
       当前 PTv3 已有的点特征流上做线性复杂度的双向序列混合。
 
@@ -668,6 +669,10 @@ class PointStateMixer(PointModule):
 
         # 用较小的初始融合权重保持保守起步，尽量降低新模块对基线的扰动。
         self.fusion_weight = nn.Parameter(torch.tensor(fusion_weight))
+
+        # 输出投影零初始化，使模块初始状态近似恒等映射；训练时再逐步学习
+        # 沿点序列方向的双向状态传播，降低对已稳定 EMA 分支的早期扰动。
+        nn.init.zeros_(self.out_proj.weight)
 
     def _mix_single_sample(self, sample_feat):
         """
@@ -1083,9 +1088,9 @@ class PointTransformerV3(PointModule):
         ema_factor=32,
         ema_stages=None,  # 指定哪些decoder stage使用EMA，None表示所有stage都使用
         ema_fusion_weight=0.1,  # EMA融合权重，初始值较小
-        enable_grn=True,  # 默认启用GRN通道响应校准，不依赖YAML新增参数
+        enable_grn=False,  # GRN在run3/run4测试文件上不稳定，默认关闭，避免干扰下一轮SSM验证
         grn_eps=1e-6,  # GRN归一化的数值稳定项
-        enable_ssm=True,  # 默认启用序列混合模块，不依赖YAML新增参数
+        enable_ssm=True,  # 默认启用轻量双向状态序列混合模块，不依赖YAML新增参数
         ssm_kernel_size=5,  # 使用较小卷积核做稳定的局部状态传播
         ssm_expansion=2,  # 轻量扩展倍率，避免显著增加显存
         ssm_stages=(1, 0),  # 默认只作用于高分辨率decoder stage，更贴近分割细节

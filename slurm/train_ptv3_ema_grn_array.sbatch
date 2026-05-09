@@ -64,7 +64,10 @@ PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
 
 CONFIG_PATH="config/seg/seg_pointtransformer_v3_EMA.yaml"
 RUN_ID="${SLURM_ARRAY_TASK_ID:-1}"
-EXP_NAME="pointtransformer_v3_EMA_GRN_run${RUN_ID}"
+# 实验前缀默认切到 SSM，表示当前主线为“EMA + 轻量双向状态序列混合”。
+# 如需复用旧 GRN 目录，可在 sbatch 时传入 EXP_PREFIX=pointtransformer_v3_EMA_GRN。
+EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_SSM}"
+EXP_NAME="${EXP_PREFIX}_run${RUN_ID}"
 SAVE_PATH="exp/seg/${EXP_NAME}"
 
 mkdir -p "${SAVE_PATH}/model" "${SAVE_PATH}/result" "${SAVE_PATH}/plots"

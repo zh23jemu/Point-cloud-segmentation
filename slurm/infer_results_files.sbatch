@@ -56,14 +56,16 @@ export PYTHONPATH=./
 PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
 CONFIG_PATH="config/seg/seg_pointtransformer_v3_EMA.yaml"
 RUN_ID="${RUN_ID:-1}"
-DEFAULT_MODEL_PATH="exp/seg/pointtransformer_v3_EMA_GRN_run${RUN_ID}/model/model_best.pth"
+# 默认读取当前新实验前缀；如果要推理旧 GRN 结果，可传入 EXP_PREFIX=pointtransformer_v3_EMA_GRN。
+EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_SSM}"
+DEFAULT_MODEL_PATH="exp/seg/${EXP_PREFIX}_run${RUN_ID}/model/model_best.pth"
 MODEL_PATH="${MODEL_PATH:-${DEFAULT_MODEL_PATH}}"
-OUT_DIR="exp/seg/pointtransformer_v3_EMA_GRN_run${RUN_ID}/inference_results"
+OUT_DIR="exp/seg/${EXP_PREFIX}_run${RUN_ID}/inference_results"
 
 mkdir -p "${OUT_DIR}"
 
 echo "============================================================"
-echo "PTv3 + EMA + GRN Single-file Inference"
+echo "PTv3 + EMA Single-file Inference"
 echo "============================================================"
 echo "Host:       $(hostname)"
 echo "Job ID:     ${SLURM_JOB_ID:-local}"
