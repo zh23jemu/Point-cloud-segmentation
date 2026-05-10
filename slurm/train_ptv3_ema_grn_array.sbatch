@@ -1,19 +1,19 @@
 #!/bin/bash
 #
-# PTv3 + EMA + GRN 训练脚本（Slurm array 版本）
+# PTv3 + EMA + SSM 训练脚本（Slurm array 版本）
 #
 # 使用方式：
 #   sbatch slurm/train_ptv3_ema_grn_array.sbatch
 #
 # 说明：
-#   1. 默认提交 2 个 array task，用于连续两次独立训练，验证 GRN 改进是否稳定。
+#   1. 默认提交 2 个 array task，用于连续两次独立训练，验证 SSM 改进是否稳定。
 #   2. 不修改 YAML 中的训练参数；脚本只覆盖 save_path，避免覆盖原 EMA-only 实验目录。
 #   3. 如果服务器使用 conda，请在 ENV_SETUP 中填入你的环境激活命令。
 #   4. 如果服务器使用项目本地 .venv，请保持默认的 PYTHON_BIN=.venv/bin/python。
 
-#SBATCH --job-name=ptv3_ema_grn
-#SBATCH --partition=plcyf-gpu
-#SBATCH --account=mfk-gsr2
+#SBATCH --job-name=ptv3_ema_ssm
+#SBATCH --partition=aws
+#SBATCH --account=gpo-ifv7xx
 #SBATCH --qos=normal
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -31,19 +31,21 @@ cd "${SLURM_SUBMIT_DIR}"
 
 mkdir -p slurm/logs
 
-# 加载服务器提供的 Python 3.10 模块，确保 .venv 的解释器和依赖 ABI 与训练环境一致。
+# 新集群当前可用 Python 模块为 3.11.7；项目训练仍通过本地 .venv/bin/python 执行，
+# module 主要用于保持编译扩展、动态库和命令行工具的基础环境一致。
 module purge
-module load python/3.10.14
+module load python/3.11.7
 module load gcc/11.4.0
 
-# 集群没有 CUDA module，但计算节点提供 /usr/local/cuda；显式设置后可复用已验证的编译/运行环境。
+# 新集群计算节点提供 /usr/local/cuda；L40S 对应 CUDA 架构为 8.9。
+# 这里显式设置 CUDA_HOME 和编译器，保证 pointops / spconv 等 CUDA 相关依赖运行环境稳定。
 export CUDA_HOME=/usr/local/cuda
 export PATH=${CUDA_HOME}/bin:${PATH}
 export LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}
 export CC=$(which gcc)
 export CXX=$(which g++)
 export CUDAHOSTCXX=$(which g++)
-export TORCH_CUDA_ARCH_LIST="7.0"
+export TORCH_CUDA_ARCH_LIST="8.9"
 
 # 小数据集 + HPC 环境下，多进程 DataLoader/BLAS 线程有时会在进入首个 batch 前触发底层 FPE。
 # 这里限制 CPU 数值库线程，训练命令再覆盖 workers=0，优先保证服务器可稳定复现实验。
