@@ -1,0 +1,21 @@
+============================================================
+PTv3 + EMA + GRN Slurm Training
+============================================================
+Host:        plcyf-com-prod-gpu001.aptiv.com
+Job ID:      18254121
+Array ID:    5
+Python:      .venv/bin/python
+Config:      config/seg/seg_pointtransformer_v3_EMA.yaml
+Save path:   exp/seg/pointtransformer_v3_EMA_SSM_run5
+Submit dir:  /net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation
+Start time:  2026-05-09 15:38:54
+============================================================
+Totally 4 samples in train set.
+Totally 1 samples in val set.
+Totally 4 samples in train set.
+Totally 1 samples in val set.
+============================================================
+Finished time: 2026-05-10 05:43:00
+Best model:    exp/seg/pointtransformer_v3_EMA_SSM_run5/model/model_best.pth
+Last model:    exp/seg/pointtransformer_v3_EMA_SSM_run5/model/model_last.pth
+============================================================
