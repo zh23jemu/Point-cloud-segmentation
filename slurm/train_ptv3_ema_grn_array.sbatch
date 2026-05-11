@@ -6,7 +6,7 @@
 #   sbatch slurm/train_ptv3_ema_grn_array.sbatch
 #
 # 说明：
-#   1. 默认提交 2 个 array task，用于连续两次独立训练，验证 SSM 改进是否稳定。
+#   1. 默认提交 2 个 array task，并允许 2 个任务并行运行，用于连续两次独立训练验证稳定性。
 #   2. 不修改 YAML 中的训练参数；脚本只覆盖 save_path，避免覆盖原 EMA-only 实验目录。
 #   3. 如果服务器使用 conda，请在 ENV_SETUP 中填入你的环境激活命令。
 #   4. 如果服务器使用项目本地 .venv，请保持默认的 PYTHON_BIN=.venv/bin/python。
@@ -20,7 +20,7 @@
 #SBATCH --cpus-per-task=16
 #SBATCH --mem=64G
 #SBATCH --time=2-00:00:00
-#SBATCH --array=1-2%1
+#SBATCH --array=1-2%2
 #SBATCH --output=slurm/logs/%x_%A_%a.out
 #SBATCH --error=slurm/logs/%x_%A_%a.err
 
