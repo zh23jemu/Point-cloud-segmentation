@@ -3,16 +3,16 @@
 # results.md 中 4 个单文件推理的 Slurm 脚本
 #
 # 使用方式：
-#   sbatch --export=ALL,RUN_ID=5 slurm/infer_results_files.sbatch
-#   sbatch --export=ALL,RUN_ID=6 slurm/infer_results_files.sbatch
+#   sbatch --export=ALL,RUN_ID=7 slurm/infer_results_files.sbatch
+#   sbatch --export=ALL,RUN_ID=8 slurm/infer_results_files.sbatch
 #
 # 可选覆盖：
 #   MODEL_PATH=/path/to/model_best.pth
 #   PYTHON_BIN=/path/to/python
 
 #SBATCH --job-name=ptv3_ssm_infer
-#SBATCH --partition=plcyf-gpu
-#SBATCH --account=mfk-gsr2
+#SBATCH --partition=aws
+#SBATCH --account=gpo-ifv7xx
 #SBATCH --qos=normal
 #SBATCH --gres=gpu:1
 #SBATCH --ntasks=1
@@ -27,13 +27,13 @@ set -euo pipefail
 cd "${SLURM_SUBMIT_DIR}"
 mkdir -p slurm/logs
 
-# 四文件推理默认回到原训练集群执行，保证权重路径、依赖环境和训练时一致。
+# 四文件推理默认使用新 Slurm 集群，和后续训练任务保持在同一套路径与资源环境中。
 # 项目仍通过本地 .venv/bin/python 执行，module 只负责提供基础 ABI 和命令行环境。
 module purge
-module load python/3.10.14
+module load python/3.11.7
 module load gcc/11.4.0
 
-# 原训练集群计算节点提供 /usr/local/cuda；旧训练节点 GPU 架构按 V100/A100 前期环境保持 7.0。
+# 新集群计算节点提供 /usr/local/cuda；已验证 aws 分区节点为 NVIDIA L40S，CUDA 架构为 8.9。
 # 这里显式设置 CUDA_HOME 和编译器，保证 pointops / spconv 等 CUDA 相关依赖运行环境稳定。
 export CUDA_HOME=/usr/local/cuda
 export PATH=${CUDA_HOME}/bin:${PATH}
@@ -41,7 +41,7 @@ export LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}
 export CC=$(which gcc)
 export CXX=$(which g++)
 export CUDAHOSTCXX=$(which g++)
-export TORCH_CUDA_ARCH_LIST="7.0"
+export TORCH_CUDA_ARCH_LIST="8.9"
 
 # 与训练脚本保持一致，限制 CPU 数值库线程，避免小规模推理时被底层线程环境影响。
 export OMP_NUM_THREADS=1
