@@ -1,0 +1,12 @@
+============================================================
+PTv3 + EMA Single-file Inference
+============================================================
+Host:       useast1-com-prod-gpu03
+Job ID:     32845314
+Python:     .venv/bin/python
+Config:     config/seg/seg_pointtransformer_v3_EMA.yaml
+Model:      exp/seg/pointtransformer_v3_EMA_SSM_run6/model/model_best.pth
+Output dir: exp/seg/pointtransformer_v3_EMA_SSM_run6/inference_results
+Start time: 2026-05-10 20:01:52
+============================================================
+错误：模型权重不存在：exp/seg/pointtransformer_v3_EMA_SSM_run6/model/model_best.pth
