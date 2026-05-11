@@ -1,0 +1,121 @@
+[2026-05-11 03:07:20,473 INFO inference.py line 329 47203] ============================================================
+[2026-05-11 03:07:20,473 INFO inference.py line 330 47203] Point Transformer V3 Inference
+[2026-05-11 03:07:20,473 INFO inference.py line 331 47203] ============================================================
+[2026-05-11 03:07:20,474 INFO inference.py line 332 47203] Config: arch: pointtransformer_v3
+base_lr: 0.001
+batch_size: 2
+batch_size_infer: 10
+batch_size_test: 2
+batch_size_val: 2
+classes: 3
+data_name: s3dis
+data_root: data
+dist_backend: nccl
+dist_url: tcp://localhost:8888
+drop_rate: 0.05
+ema_factor: 32
+ema_fusion_weight: 0.1
+ema_stages: None
+enable_ema: True
+ensemble_runs: 3
+epochs: 100
+eval_freq: 1
+evaluate: True
+fea_dim: 3
+ignore_label: 255
+input_file: data/test/shanqu2_final (1).txt
+loop: 50
+manual_seed: 7777
+model_path: exp/seg/pointtransformer_v3_EMA_SSM_run5/model/model_best.pth
+momentum: 0.9
+multiplier: 0.1
+multiprocessing_distributed: True
+names_path: None
+output_file: exp/seg/pointtransformer_v3_EMA_SSM_run5/inference_results/shanqu2_final (1)_pred.txt
+print_freq: 1
+rank: 0
+resume: None
+save_folder: None
+save_freq: 1
+save_path: None
+split: test
+start_epoch: 0
+step_epoch: 20
+sync_bn: False
+test_area: 6
+test_gpu: [0]
+test_workers: 4
+train_gpu: [0]
+use_xyz: True
+voxel_max: 30000
+voxel_size: 0.04
+weight: None
+weight_decay: 0.0001
+workers: 16
+world_size: 1
+[2026-05-11 03:07:20,474 INFO inference.py line 334 47203] => Creating model ...
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:47: FutureWarning: `torch.cuda.amp.custom_fwd(args...)` is deprecated. Please use `torch.amp.custom_fwd(args..., device_type='cuda')` instead.
+  _TORCH_CUSTOM_FWD = amp.custom_fwd(cast_inputs=torch.float16)
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:97: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:163: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:243: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:332: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:369: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:389: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/spconv/pytorch/functional.py:412: FutureWarning: `torch.cuda.amp.custom_bwd(args...)` is deprecated. Please use `torch.amp.custom_bwd(args..., device_type='cuda')` instead.
+  def backward(ctx, grad_output):
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/.venv/lib/python3.10/site-packages/timm/models/layers/__init__.py:49: FutureWarning: Importing from timm.models.layers is deprecated, please import via timm.layers
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.layers", FutureWarning)
+[2026-05-11 03:07:28,611 INFO inference.py line 357 47203] Model: pointtransformer_v3, in_channels=3, classes=3
+[2026-05-11 03:07:28,612 INFO inference.py line 359 47203] EMA enabled: factor=32, stages=None, fusion_weight=0.1
+[2026-05-11 03:07:28,612 INFO inference.py line 363 47203] => Loading checkpoint 'exp/seg/pointtransformer_v3_EMA_SSM_run5/model/model_best.pth'
+/net/8k3/e0fs01/users/xj62kv/Point-cloud-segmentation/tool/inference.py:364: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  checkpoint = torch.load(args.model_path)
+[2026-05-11 03:07:29,361 INFO inference.py line 374 47203] => Loaded checkpoint (epoch 43)
+[2026-05-11 03:07:29,361 INFO inference.py line 82 47203] Loading point cloud from: data/test/shanqu2_final (1).txt
+[2026-05-11 03:07:30,637 INFO inference.py line 91 47203] Loaded point cloud with shape: (1081305, 8)
+[2026-05-11 03:07:30,669 INFO inference.py line 379 47203] Point cloud: 1081305 points
+[2026-05-11 03:07:30,669 INFO inference.py line 381 47203] => Starting inference ...
+[2026-05-11 03:07:30,713 INFO inference.py line 240 47203] Ensemble mode: 3 run(s)
+[2026-05-11 03:07:30,713 INFO inference.py line 243 47203] => Run 1/3 (seed=42)
+[2026-05-11 03:07:30,725 INFO inference.py line 197 47203]   [run seed=42] Building index list ...
+[2026-05-11 03:07:38,157 INFO inference.py line 199 47203]   [run seed=42] Total batches: 126
+Inference (seed=42):   0%|          | 0/126 [00:00<?, ?batch/s]Inference (seed=42):   8%|▊         | 10/126 [00:03<00:38,  3.03batch/s]Inference (seed=42):   8%|▊         | 10/126 [00:03<00:38,  3.03batch/s, points=3e+5, batch=10/126, gpu_mem=0.6GB]Inference (seed=42):  16%|█▌        | 20/126 [00:04<00:24,  4.27batch/s, points=3e+5, batch=10/126, gpu_mem=0.6GB]Inference (seed=42):  16%|█▌        | 20/126 [00:04<00:24,  4.27batch/s, points=3e+5, batch=20/126, gpu_mem=0.6GB]Inference (seed=42):  24%|██▍       | 30/126 [00:06<00:19,  4.92batch/s, points=3e+5, batch=20/126, gpu_mem=0.6GB]Inference (seed=42):  24%|██▍       | 30/126 [00:06<00:19,  4.92batch/s, points=3e+5, batch=30/126, gpu_mem=0.6GB]Inference (seed=42):  32%|███▏      | 40/126 [00:08<00:16,  5.30batch/s, points=3e+5, batch=30/126, gpu_mem=0.6GB]Inference (seed=42):  32%|███▏      | 40/126 [00:08<00:16,  5.30batch/s, points=3e+5, batch=40/126, gpu_mem=0.6GB]Inference (seed=42):  40%|███▉      | 50/126 [00:09<00:13,  5.52batch/s, points=3e+5, batch=40/126, gpu_mem=0.6GB]Inference (seed=42):  40%|███▉      | 50/126 [00:09<00:13,  5.52batch/s, points=3e+5, batch=50/126, gpu_mem=0.6GB]Inference (seed=42):  48%|████▊     | 60/126 [00:11<00:11,  5.66batch/s, points=3e+5, batch=50/126, gpu_mem=0.6GB]Inference (seed=42):  48%|████▊     | 60/126 [00:11<00:11,  5.66batch/s, points=3e+5, batch=60/126, gpu_mem=0.6GB]Inference (seed=42):  56%|█████▌    | 70/126 [00:13<00:09,  5.75batch/s, points=3e+5, batch=60/126, gpu_mem=0.6GB]Inference (seed=42):  56%|█████▌    | 70/126 [00:13<00:09,  5.75batch/s, points=3e+5, batch=70/126, gpu_mem=0.6GB]Inference (seed=42):  63%|██████▎   | 80/126 [00:15<00:07,  5.81batch/s, points=3e+5, batch=70/126, gpu_mem=0.6GB]Inference (seed=42):  63%|██████▎   | 80/126 [00:15<00:07,  5.81batch/s, points=3e+5, batch=80/126, gpu_mem=0.6GB]Inference (seed=42):  71%|███████▏  | 90/126 [00:16<00:06,  5.86batch/s, points=3e+5, batch=80/126, gpu_mem=0.6GB]Inference (seed=42):  71%|███████▏  | 90/126 [00:16<00:06,  5.86batch/s, points=3e+5, batch=90/126, gpu_mem=0.6GB]Inference (seed=42):  79%|███████▉  | 100/126 [00:18<00:04,  5.90batch/s, points=3e+5, batch=90/126, gpu_mem=0.6GB]Inference (seed=42):  79%|███████▉  | 100/126 [00:18<00:04,  5.90batch/s, points=3e+5, batch=100/126, gpu_mem=0.6GB]Inference (seed=42):  87%|████████▋ | 110/126 [00:20<00:02,  5.92batch/s, points=3e+5, batch=100/126, gpu_mem=0.6GB]Inference (seed=42):  87%|████████▋ | 110/126 [00:20<00:02,  5.92batch/s, points=3e+5, batch=110/126, gpu_mem=0.6GB]Inference (seed=42):  95%|█████████▌| 120/126 [00:21<00:01,  5.93batch/s, points=3e+5, batch=110/126, gpu_mem=0.6GB]Inference (seed=42):  95%|█████████▌| 120/126 [00:21<00:01,  5.93batch/s, points=3e+5, batch=120/126, gpu_mem=0.6GB]Inference (seed=42): 100%|██████████| 126/126 [00:22<00:00,  5.92batch/s, points=3e+5, batch=120/126, gpu_mem=0.6GB]Inference (seed=42): 100%|██████████| 126/126 [00:22<00:00,  5.92batch/s, points=180000, batch=126/126, gpu_mem=0.6GB]Inference (seed=42): 100%|██████████| 126/126 [00:22<00:00,  5.54batch/s, points=180000, batch=126/126, gpu_mem=0.6GB]
+[2026-05-11 03:08:00,903 INFO inference.py line 243 47203] => Run 2/3 (seed=43)
+[2026-05-11 03:08:00,916 INFO inference.py line 197 47203]   [run seed=43] Building index list ...
+[2026-05-11 03:08:08,216 INFO inference.py line 199 47203]   [run seed=43] Total batches: 126
+Inference (seed=43):   0%|          | 0/126 [00:00<?, ?batch/s]Inference (seed=43):   8%|▊         | 10/126 [00:01<00:19,  6.10batch/s]Inference (seed=43):   8%|▊         | 10/126 [00:01<00:19,  6.10batch/s, points=3e+5, batch=10/126, gpu_mem=0.6GB]Inference (seed=43):  16%|█▌        | 20/126 [00:03<00:17,  6.05batch/s, points=3e+5, batch=10/126, gpu_mem=0.6GB]Inference (seed=43):  16%|█▌        | 20/126 [00:03<00:17,  6.05batch/s, points=3e+5, batch=20/126, gpu_mem=0.6GB]Inference (seed=43):  24%|██▍       | 30/126 [00:04<00:15,  6.03batch/s, points=3e+5, batch=20/126, gpu_mem=0.6GB]Inference (seed=43):  24%|██▍       | 30/126 [00:04<00:15,  6.03batch/s, points=3e+5, batch=30/126, gpu_mem=0.6GB]Inference (seed=43):  32%|███▏      | 40/126 [00:06<00:14,  6.01batch/s, points=3e+5, batch=30/126, gpu_mem=0.6GB]Inference (seed=43):  32%|███▏      | 40/126 [00:06<00:14,  6.01batch/s, points=3e+5, batch=40/126, gpu_mem=0.6GB]Inference (seed=43):  40%|███▉      | 50/126 [00:08<00:12,  6.00batch/s, points=3e+5, batch=40/126, gpu_mem=0.6GB]Inference (seed=43):  40%|███▉      | 50/126 [00:08<00:12,  6.00batch/s, points=3e+5, batch=50/126, gpu_mem=0.6GB]Inference (seed=43):  48%|████▊     | 60/126 [00:09<00:11,  5.98batch/s, points=3e+5, batch=50/126, gpu_mem=0.6GB]Inference (seed=43):  48%|████▊     | 60/126 [00:09<00:11,  5.98batch/s, points=3e+5, batch=60/126, gpu_mem=0.6GB]Inference (seed=43):  56%|█████▌    | 70/126 [00:11<00:09,  5.97batch/s, points=3e+5, batch=60/126, gpu_mem=0.6GB]Inference (seed=43):  56%|█████▌    | 70/126 [00:11<00:09,  5.97batch/s, points=3e+5, batch=70/126, gpu_mem=0.6GB]Inference (seed=43):  63%|██████▎   | 80/126 [00:13<00:07,  5.96batch/s, points=3e+5, batch=70/126, gpu_mem=0.6GB]Inference (seed=43):  63%|██████▎   | 80/126 [00:13<00:07,  5.96batch/s, points=3e+5, batch=80/126, gpu_mem=0.6GB]Inference (seed=43):  71%|███████▏  | 90/126 [00:15<00:06,  5.96batch/s, points=3e+5, batch=80/126, gpu_mem=0.6GB]Inference (seed=43):  71%|███████▏  | 90/126 [00:15<00:06,  5.96batch/s, points=3e+5, batch=90/126, gpu_mem=0.6GB]Inference (seed=43):  79%|███████▉  | 100/126 [00:16<00:04,  5.97batch/s, points=3e+5, batch=90/126, gpu_mem=0.6GB]Inference (seed=43):  79%|███████▉  | 100/126 [00:16<00:04,  5.97batch/s, points=3e+5, batch=100/126, gpu_mem=0.6GB]Inference (seed=43):  87%|████████▋ | 110/126 [00:18<00:02,  5.97batch/s, points=3e+5, batch=100/126, gpu_mem=0.6GB]Inference (seed=43):  87%|████████▋ | 110/126 [00:18<00:02,  5.97batch/s, points=3e+5, batch=110/126, gpu_mem=0.6GB]Inference (seed=43):  95%|█████████▌| 120/126 [00:20<00:01,  5.97batch/s, points=3e+5, batch=110/126, gpu_mem=0.6GB]Inference (seed=43):  95%|█████████▌| 120/126 [00:20<00:01,  5.97batch/s, points=3e+5, batch=120/126, gpu_mem=0.6GB]Inference (seed=43): 100%|██████████| 126/126 [00:21<00:00,  5.95batch/s, points=3e+5, batch=120/126, gpu_mem=0.6GB]Inference (seed=43): 100%|██████████| 126/126 [00:21<00:00,  5.95batch/s, points=180000, batch=126/126, gpu_mem=0.6GB]Inference (seed=43): 100%|██████████| 126/126 [00:21<00:00,  5.98batch/s, points=180000, batch=126/126, gpu_mem=0.6GB]
+[2026-05-11 03:08:29,291 INFO inference.py line 243 47203] => Run 3/3 (seed=44)
+[2026-05-11 03:08:29,306 INFO inference.py line 197 47203]   [run seed=44] Building index list ...
+[2026-05-11 03:08:36,557 INFO inference.py line 199 47203]   [run seed=44] Total batches: 126
+Inference (seed=44):   0%|          | 0/126 [00:00<?, ?batch/s]Inference (seed=44):   8%|▊         | 10/126 [00:01<00:19,  6.04batch/s]Inference (seed=44):   8%|▊         | 10/126 [00:01<00:19,  6.04batch/s, points=3e+5, batch=10/126, gpu_mem=0.6GB]Inference (seed=44):  16%|█▌        | 20/126 [00:03<00:17,  6.02batch/s, points=3e+5, batch=10/126, gpu_mem=0.6GB]Inference (seed=44):  16%|█▌        | 20/126 [00:03<00:17,  6.02batch/s, points=3e+5, batch=20/126, gpu_mem=0.6GB]Inference (seed=44):  24%|██▍       | 30/126 [00:04<00:15,  6.01batch/s, points=3e+5, batch=20/126, gpu_mem=0.6GB]Inference (seed=44):  24%|██▍       | 30/126 [00:04<00:15,  6.01batch/s, points=3e+5, batch=30/126, gpu_mem=0.6GB]Inference (seed=44):  32%|███▏      | 40/126 [00:06<00:14,  6.00batch/s, points=3e+5, batch=30/126, gpu_mem=0.6GB]Inference (seed=44):  32%|███▏      | 40/126 [00:06<00:14,  6.00batch/s, points=3e+5, batch=40/126, gpu_mem=0.6GB]Inference (seed=44):  40%|███▉      | 50/126 [00:08<00:12,  5.99batch/s, points=3e+5, batch=40/126, gpu_mem=0.6GB]Inference (seed=44):  40%|███▉      | 50/126 [00:08<00:12,  5.99batch/s, points=3e+5, batch=50/126, gpu_mem=0.6GB]Inference (seed=44):  48%|████▊     | 60/126 [00:10<00:11,  5.98batch/s, points=3e+5, batch=50/126, gpu_mem=0.6GB]Inference (seed=44):  48%|████▊     | 60/126 [00:10<00:11,  5.98batch/s, points=3e+5, batch=60/126, gpu_mem=0.6GB]Inference (seed=44):  56%|█████▌    | 70/126 [00:11<00:09,  5.97batch/s, points=3e+5, batch=60/126, gpu_mem=0.6GB]Inference (seed=44):  56%|█████▌    | 70/126 [00:11<00:09,  5.97batch/s, points=3e+5, batch=70/126, gpu_mem=0.6GB]Inference (seed=44):  63%|██████▎   | 80/126 [00:13<00:07,  5.96batch/s, points=3e+5, batch=70/126, gpu_mem=0.6GB]Inference (seed=44):  63%|██████▎   | 80/126 [00:13<00:07,  5.96batch/s, points=3e+5, batch=80/126, gpu_mem=0.6GB]Inference (seed=44):  71%|███████▏  | 90/126 [00:15<00:06,  5.97batch/s, points=3e+5, batch=80/126, gpu_mem=0.6GB]Inference (seed=44):  71%|███████▏  | 90/126 [00:15<00:06,  5.97batch/s, points=3e+5, batch=90/126, gpu_mem=0.6GB]Inference (seed=44):  79%|███████▉  | 100/126 [00:16<00:04,  5.97batch/s, points=3e+5, batch=90/126, gpu_mem=0.6GB]Inference (seed=44):  79%|███████▉  | 100/126 [00:16<00:04,  5.97batch/s, points=3e+5, batch=100/126, gpu_mem=0.6GB]Inference (seed=44):  87%|████████▋ | 110/126 [00:18<00:02,  5.97batch/s, points=3e+5, batch=100/126, gpu_mem=0.6GB]Inference (seed=44):  87%|████████▋ | 110/126 [00:18<00:02,  5.97batch/s, points=3e+5, batch=110/126, gpu_mem=0.6GB]Inference (seed=44):  95%|█████████▌| 120/126 [00:20<00:01,  5.97batch/s, points=3e+5, batch=110/126, gpu_mem=0.6GB]Inference (seed=44):  95%|█████████▌| 120/126 [00:20<00:01,  5.97batch/s, points=3e+5, batch=120/126, gpu_mem=0.6GB]Inference (seed=44): 100%|██████████| 126/126 [00:21<00:00,  5.95batch/s, points=3e+5, batch=120/126, gpu_mem=0.6GB]Inference (seed=44): 100%|██████████| 126/126 [00:21<00:00,  5.95batch/s, points=180000, batch=126/126, gpu_mem=0.6GB]Inference (seed=44): 100%|██████████| 126/126 [00:21<00:00,  5.98batch/s, points=180000, batch=126/126, gpu_mem=0.6GB]
+[2026-05-11 03:08:57,651 INFO inference.py line 385 47203] => Inference completed in 86.98 seconds
+[2026-05-11 03:08:57,651 INFO inference.py line 386 47203] => Speed: 12431 points/sec
+[2026-05-11 03:08:57,665 INFO inference.py line 277 47203] ============================================================
+[2026-05-11 03:08:57,665 INFO inference.py line 278 47203] Evaluation Results
+[2026-05-11 03:08:57,665 INFO inference.py line 279 47203] ============================================================
+[2026-05-11 03:08:57,665 INFO inference.py line 280 47203]   mIoU:       0.9673
+[2026-05-11 03:08:57,665 INFO inference.py line 281 47203]   mRecall:    0.9700
+[2026-05-11 03:08:57,665 INFO inference.py line 282 47203]   mPrecision: 0.9972
+[2026-05-11 03:08:57,665 INFO inference.py line 283 47203] ------------------------------------------------------------
+[2026-05-11 03:08:57,665 INFO inference.py line 285 47203]   Class 0: IoU 0.9913 | Recall 0.9948 | Precision 0.9965
+[2026-05-11 03:08:57,665 INFO inference.py line 285 47203]   Class 1: IoU 0.9126 | Recall 0.9152 | Precision 0.9969
+[2026-05-11 03:08:57,665 INFO inference.py line 285 47203]   Class 2: IoU 0.9981 | Recall 0.9999 | Precision 0.9981
+[2026-05-11 03:08:57,666 INFO inference.py line 288 47203] ============================================================
+[2026-05-11 03:08:57,666 INFO inference.py line 293 47203] Saving results to: exp/seg/pointtransformer_v3_EMA_SSM_run5/inference_results/shanqu2_final (1)_pred.txt
+[2026-05-11 03:09:01,830 INFO inference.py line 314 47203] Results saved!
+[2026-05-11 03:09:01,830 INFO inference.py line 315 47203]   - Full data with predictions: exp/seg/pointtransformer_v3_EMA_SSM_run5/inference_results/shanqu2_final (1)_pred.txt
+[2026-05-11 03:09:01,830 INFO inference.py line 316 47203]   - Labels only: exp/seg/pointtransformer_v3_EMA_SSM_run5/inference_results/shanqu2_final (1)_pred_labels.txt
+[2026-05-11 03:09:01,835 INFO inference.py line 319 47203] Prediction statistics:
+[2026-05-11 03:09:01,835 INFO inference.py line 321 47203]   Class 0: 24359 points (2.25%)
+[2026-05-11 03:09:01,835 INFO inference.py line 321 47203]   Class 1: 20580 points (1.90%)
+[2026-05-11 03:09:01,835 INFO inference.py line 321 47203]   Class 2: 1036366 points (95.84%)
+[2026-05-11 03:09:01,836 INFO inference.py line 393 47203] ============================================================
+[2026-05-11 03:09:01,836 INFO inference.py line 394 47203] All done!
+[2026-05-11 03:09:01,836 INFO inference.py line 395 47203] ============================================================
