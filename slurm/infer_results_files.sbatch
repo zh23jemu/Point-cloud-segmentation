@@ -3,14 +3,14 @@
 # results.md 中 4 个单文件推理的 Slurm 脚本
 #
 # 使用方式：
-#   sbatch --export=ALL,RUN_ID=7 slurm/infer_results_files.sbatch
-#   sbatch --export=ALL,RUN_ID=8 slurm/infer_results_files.sbatch
+#   sbatch --export=ALL,RUN_ID=9 slurm/infer_results_files.sbatch
+#   sbatch --export=ALL,RUN_ID=10 slurm/infer_results_files.sbatch
 #
 # 可选覆盖：
 #   MODEL_PATH=/path/to/model_best.pth
 #   PYTHON_BIN=/path/to/python
 
-#SBATCH --job-name=ptv3_ssm_infer
+#SBATCH --job-name=ptv3_rfg_infer
 #SBATCH --partition=aws
 #SBATCH --account=gpo-ifv7xx
 #SBATCH --qos=normal
@@ -58,8 +58,8 @@ export PYTHONPATH=./
 PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
 CONFIG_PATH="config/seg/seg_pointtransformer_v3_EMA.yaml"
 RUN_ID="${RUN_ID:-1}"
-# 默认读取当前新实验前缀；如果要推理旧 GRN 结果，可传入 EXP_PREFIX=pointtransformer_v3_EMA_GRN。
-EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_SSM}"
+# 默认读取当前新实验前缀；如果要推理旧 SSM/GRN 结果，可传入对应 EXP_PREFIX。
+EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_RFG}"
 DEFAULT_MODEL_PATH="exp/seg/${EXP_PREFIX}_run${RUN_ID}/model/model_best.pth"
 MODEL_PATH="${MODEL_PATH:-${DEFAULT_MODEL_PATH}}"
 OUT_DIR="exp/seg/${EXP_PREFIX}_run${RUN_ID}/inference_results"

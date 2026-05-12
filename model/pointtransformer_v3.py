@@ -717,6 +717,74 @@ class PointStateMixer(PointModule):
         return point
 
 
+class PointResidualFeatureGate(PointModule):
+    """
+    残差式点云特征门控模块。
+
+    模块类型说明：
+    - 属于“特征重标定 / 残差门控”方向，只根据每个样本自身的通道统计生成
+      channel-wise gate，不做类别相关调整，也不改变点云序列化、采样策略或损失函数。
+    - 与 EMA 的区别是：EMA 侧重多尺度空间上下文建模，这里只做解码特征的通道可靠性
+      重标定，不生成空间注意力图，因此功能上不重复。
+
+    稳定性设计：
+    - 每个 batch 样本按 offset 独立统计均值和方差，避免不同文件点数差异互相污染；
+    - 最后一层零初始化，初始输出严格接近恒等映射，先保留 PTv3 + EMA 的原有能力；
+    - 通过较小的可学习 fusion_weight 逐步放大有效门控，减少对 class0/class2 的扰动。
+    """
+
+    def __init__(self, channels, reduction=4, fusion_weight=0.05, eps=1e-6):
+        super().__init__()
+        self.channels = channels
+        self.eps = eps
+        hidden_channels = max(channels // reduction, 8)
+
+        # 输入拼接每个样本的通道均值和标准差，既保留响应强度，也保留波动信息。
+        # 这里只输出通道门控，不接触类别 logits，因此不会形成针对 class1 的硬编码偏置。
+        self.gate_mlp = nn.Sequential(
+            nn.Linear(channels * 2, hidden_channels),
+            nn.GELU(),
+            nn.Linear(hidden_channels, channels),
+        )
+        self.fusion_weight = nn.Parameter(torch.tensor(fusion_weight))
+
+        # 零初始化让模块初始为恒等残差，避免新模块一开始破坏 EMA-only 的稳定基线。
+        nn.init.zeros_(self.gate_mlp[-1].weight)
+        nn.init.zeros_(self.gate_mlp[-1].bias)
+
+    def forward(self, point: Point):
+        assert {"feat", "offset"}.issubset(point.keys())
+
+        feat = point.feat
+        offset = point.offset
+        bincount = offset2bincount(offset)
+
+        output_list = []
+        start = 0
+        for cnt in bincount:
+            end = start + cnt
+            sample_feat = feat[start:end]
+
+            if cnt > 0:
+                # 每个样本独立统计，避免大场景样本主导小场景样本的通道门控。
+                mean = sample_feat.mean(dim=0, keepdim=True)
+                centered = sample_feat - mean
+                std = torch.sqrt(centered.pow(2).mean(dim=0, keepdim=True) + self.eps)
+                context = torch.cat([mean, std], dim=1)
+
+                # tanh 将门控幅度限制在 [-1, 1]，再乘较小 fusion_weight，控制改动幅度。
+                gate = torch.tanh(self.gate_mlp(context))
+                sample_feat = sample_feat + self.fusion_weight * sample_feat * gate
+
+            output_list.append(sample_feat)
+            start = end
+
+        point.feat = torch.cat(output_list, dim=0) if output_list else feat
+        if "sparse_conv_feat" in point.keys():
+            point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(point.feat)
+        return point
+
+
 class Block(PointModule):
     def __init__(
         self,
@@ -1088,13 +1156,17 @@ class PointTransformerV3(PointModule):
         ema_factor=32,
         ema_stages=None,  # 指定哪些decoder stage使用EMA，None表示所有stage都使用
         ema_fusion_weight=0.1,  # EMA融合权重，初始值较小
-        enable_grn=False,  # GRN在run3/run4测试文件上不稳定，默认关闭，避免干扰下一轮SSM验证
+        enable_grn=False,  # GRN在run3/run4测试文件上不稳定，默认关闭
         grn_eps=1e-6,  # GRN归一化的数值稳定项
-        enable_ssm=True,  # 默认启用轻量双向状态序列混合模块，不依赖YAML新增参数
+        enable_ssm=False,  # SSM在run5-run8四文件推理上不稳定，默认关闭
         ssm_kernel_size=5,  # 使用较小卷积核做稳定的局部状态传播
         ssm_expansion=2,  # 轻量扩展倍率，避免显著增加显存
         ssm_stages=(1, 0),  # 默认只作用于高分辨率decoder stage，更贴近分割细节
         ssm_fusion_weight=0.1,  # 与残差分支融合的初始权重
+        enable_rfg=True,  # 默认启用残差特征门控，作为下一轮更保守的模型主体改进
+        rfg_reduction=4,  # 门控MLP压缩比例，保持参数量轻量
+        rfg_stages=(0,),  # 先只放在最高分辨率decoder stage，优先稳定边界和细节
+        rfg_fusion_weight=0.05,  # 初始融合权重更小，减少对原模型输出的扰动
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -1160,6 +1232,10 @@ class PointTransformerV3(PointModule):
         self.ssm_kernel_size = ssm_kernel_size
         self.ssm_expansion = ssm_expansion
         self.ssm_fusion_weight = ssm_fusion_weight
+        self.enable_rfg = enable_rfg
+        self.rfg_stages = set(rfg_stages) if rfg_stages is not None else None
+        self.rfg_reduction = rfg_reduction
+        self.rfg_fusion_weight = rfg_fusion_weight
 
         # encoder
         enc_drop_path = [
@@ -1275,6 +1351,20 @@ class PointTransformerV3(PointModule):
                                 fusion_weight=self.ema_fusion_weight  # 可学习的融合权重
                             ),
                             name=f"ema{s}"
+                        )
+
+                if self.enable_rfg:
+                    # RFG放在EMA之后，只对已融合的解码特征做轻量通道门控；
+                    # 默认只作用于最高分辨率stage，避免像SSM一样对多个stage产生较强扰动。
+                    use_rfg_here = (self.rfg_stages is None) or (s in self.rfg_stages)
+                    if use_rfg_here:
+                        dec.add(
+                            PointResidualFeatureGate(
+                                channels=dec_channels[s],
+                                reduction=self.rfg_reduction,
+                                fusion_weight=self.rfg_fusion_weight,
+                            ),
+                            name=f"rfg{s}"
                         )
 
                 if self.enable_ssm:

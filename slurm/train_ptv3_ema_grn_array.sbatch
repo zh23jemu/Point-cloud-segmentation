@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# PTv3 + EMA + SSM 训练脚本（Slurm array 版本）
+# PTv3 + EMA + RFG 训练脚本（Slurm array 版本）
 #
 # 使用方式：
 #   sbatch slurm/train_ptv3_ema_grn_array.sbatch
@@ -11,7 +11,7 @@
 #   3. 如果服务器使用 conda，请在 ENV_SETUP 中填入你的环境激活命令。
 #   4. 如果服务器使用项目本地 .venv，请保持默认的 PYTHON_BIN=.venv/bin/python。
 
-#SBATCH --job-name=ptv3_ema_ssm
+#SBATCH --job-name=ptv3_ema_rfg
 #SBATCH --partition=aws
 #SBATCH --account=gpo-ifv7xx
 #SBATCH --qos=normal
@@ -66,16 +66,16 @@ PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
 
 CONFIG_PATH="config/seg/seg_pointtransformer_v3_EMA.yaml"
 RUN_ID="${SLURM_ARRAY_TASK_ID:-1}"
-# 实验前缀默认切到 SSM，表示当前主线为“EMA + 轻量双向状态序列混合”。
-# 如需复用旧 GRN 目录，可在 sbatch 时传入 EXP_PREFIX=pointtransformer_v3_EMA_GRN。
-EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_SSM}"
+# 实验前缀默认切到 RFG，表示当前主线为“EMA + 残差特征门控”。
+# 如需复用旧 SSM/GRN 目录，可在 sbatch 时传入对应 EXP_PREFIX。
+EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_RFG}"
 EXP_NAME="${EXP_PREFIX}_run${RUN_ID}"
 SAVE_PATH="exp/seg/${EXP_NAME}"
 
 mkdir -p "${SAVE_PATH}/model" "${SAVE_PATH}/result" "${SAVE_PATH}/plots"
 
 echo "============================================================"
-echo "PTv3 + EMA + GRN Slurm Training"
+echo "PTv3 + EMA + RFG Slurm Training"
 echo "============================================================"
 echo "Host:        $(hostname)"
 echo "Job ID:      ${SLURM_JOB_ID:-local}"
