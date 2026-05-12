@@ -1,0 +1,12 @@
+============================================================
+PTv3 + EMA + GRN Slurm Training
+============================================================
+Host:        useast1-com-prod-gpu02
+Job ID:      32847810
+Array ID:    7
+Python:      .venv/bin/python
+Config:      config/seg/seg_pointtransformer_v3_EMA.yaml
+Save path:   exp/seg/pointtransformer_v3_EMA_SSM_run7
+Submit dir:  /mnt/users/xj62kv/Point-cloud-segmentation
+Start time:  2026-05-10 23:55:53
+============================================================

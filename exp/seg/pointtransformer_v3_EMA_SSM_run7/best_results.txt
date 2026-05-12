@@ -1,0 +1,19 @@
+Best Results Summary
+============================================================
+Best Epoch: 50
+
+[Train Metrics]
+  Loss:       0.0476
+  Loss CE:    0.0201
+  Loss Lovasz: 0.0275
+  mIoU:       0.9666
+  mRecall:    0.9855
+  mPrecision: 0.9798
+
+[Validation Metrics]
+  Loss:       0.1050
+  Loss CE:    0.0562
+  Loss Lovasz: 0.0487
+  mIoU:       0.9736
+  mRecall:    0.9877
+  mPrecision: 0.9856
