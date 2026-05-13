@@ -1165,8 +1165,8 @@ class PointTransformerV3(PointModule):
         ssm_fusion_weight=0.1,  # 与残差分支融合的初始权重
         enable_rfg=True,  # 默认启用残差特征门控，作为下一轮更保守的模型主体改进
         rfg_reduction=4,  # 门控MLP压缩比例，保持参数量轻量
-        rfg_stages=(0,),  # 先只放在最高分辨率decoder stage，优先稳定边界和细节
-        rfg_fusion_weight=0.05,  # 初始融合权重更小，减少对原模型输出的扰动
+        rfg_stages=(1, 0),  # RFG run9/run10整体正向但幅度不足，扩展到最后两个高分辨率decoder stage
+        rfg_fusion_weight=0.08,  # 在保持保守残差的前提下小幅增强门控强度，争取补足未达标文件
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -1355,7 +1355,7 @@ class PointTransformerV3(PointModule):
 
                 if self.enable_rfg:
                     # RFG放在EMA之后，只对已融合的解码特征做轻量通道门控；
-                    # 默认只作用于最高分辨率stage，避免像SSM一样对多个stage产生较强扰动。
+                    # 当前只作用于最后两个高分辨率stage，比SSM更保守，同时补强class1细节表达。
                     use_rfg_here = (self.rfg_stages is None) or (s in self.rfg_stages)
                     if use_rfg_here:
                         dec.add(
