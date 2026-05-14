@@ -1165,9 +1165,9 @@ class PointTransformerV3(PointModule):
         ssm_fusion_weight=0.1,  # 与残差分支融合的初始权重
         enable_rfg=True,  # 默认启用残差特征门控，作为下一轮更保守的模型主体改进
         rfg_reduction=4,  # 门控MLP压缩比例，保持参数量轻量
-        rfg_stages=(1, 0),  # RFG_S02继续保留最后两个高分辨率decoder stage，但按stage控制强度
-        rfg_fusion_weight=0.08,  # 未显式配置stage权重时的兜底融合强度，兼容旧实验配置
-        rfg_stage_fusion_weights=None,  # 可选：按decoder stage指定RFG融合权重，用于降低次高分辨率stage扰动
+        rfg_stages=(0,),  # RFG_S03回到最高分辨率decoder stage，优先恢复跨文件稳定性
+        rfg_fusion_weight=0.07,  # 介于原始RFG 0.05与S01 0.08之间，保留增强但降低过拟合风险
+        rfg_stage_fusion_weights=None,  # 可选：按decoder stage指定RFG融合权重，默认仅stage 0生效
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -1237,11 +1237,11 @@ class PointTransformerV3(PointModule):
         self.rfg_stages = set(rfg_stages) if rfg_stages is not None else None
         self.rfg_reduction = rfg_reduction
         self.rfg_fusion_weight = rfg_fusion_weight
-        # RFG_S01的两个stage统一0.08时，run12有改善但run11不稳定。
-        # RFG_S02默认采用stage-specific权重：最高分辨率stage保持0.08，
-        # 次高分辨率stage降到0.04，以保留细节增强同时减少对data2/shanqu6的扰动。
+        # RFG_S02的双stage策略仍然不稳定，且run14在固定文件上退化明显。
+        # RFG_S03回到单stage，只在最高分辨率解码特征上做轻量门控，
+        # 用0.07在原始RFG稳定性和S01的增强幅度之间取折中。
         if rfg_stage_fusion_weights is None:
-            rfg_stage_fusion_weights = {0: 0.08, 1: 0.04}
+            rfg_stage_fusion_weights = {0: 0.07}
         self.rfg_stage_fusion_weights = {
             int(stage): float(weight)
             for stage, weight in rfg_stage_fusion_weights.items()
@@ -1365,8 +1365,7 @@ class PointTransformerV3(PointModule):
 
                 if self.enable_rfg:
                     # RFG放在EMA之后，只对已融合的解码特征做轻量通道门控；
-                    # RFG_S02继续只作用于最后两个高分辨率stage，并按stage使用不同融合强度：
-                    # 最高分辨率stage负责细节补强，次高分辨率stage使用较小权重控制跨文件波动。
+                    # RFG_S03只作用于最高分辨率stage，避免双stage门控在固定文件上放大波动。
                     use_rfg_here = (self.rfg_stages is None) or (s in self.rfg_stages)
                     if use_rfg_here:
                         rfg_fusion_weight = self.rfg_stage_fusion_weights.get(
