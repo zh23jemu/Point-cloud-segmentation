@@ -733,10 +733,18 @@ class PointResidualFeatureGate(PointModule):
     - 通过较小的可学习 fusion_weight 逐步放大有效门控，减少对 class0/class2 的扰动。
     """
 
-    def __init__(self, channels, reduction=4, fusion_weight=0.05, eps=1e-6):
+    def __init__(
+        self,
+        channels,
+        reduction=4,
+        fusion_weight=0.05,
+        gate_limit=1.0,
+        eps=1e-6,
+    ):
         super().__init__()
         self.channels = channels
         self.eps = eps
+        self.gate_limit = gate_limit
         hidden_channels = max(channels // reduction, 8)
 
         # 输入拼接每个样本的通道均值和标准差，既保留响应强度，也保留波动信息。
@@ -772,8 +780,9 @@ class PointResidualFeatureGate(PointModule):
                 std = torch.sqrt(centered.pow(2).mean(dim=0, keepdim=True) + self.eps)
                 context = torch.cat([mean, std], dim=1)
 
-                # tanh 将门控幅度限制在 [-1, 1]，再乘较小 fusion_weight，控制改动幅度。
-                gate = torch.tanh(self.gate_mlp(context))
+                # tanh 将门控幅度限制在 [-1, 1]。RFG_S04再乘gate_limit，
+                # 对单个通道的最大改动做二次限幅，避免少数通道在data2等文件上被过度重标定。
+                gate = torch.tanh(self.gate_mlp(context)) * self.gate_limit
                 sample_feat = sample_feat + self.fusion_weight * sample_feat * gate
 
             output_list.append(sample_feat)
@@ -1165,9 +1174,10 @@ class PointTransformerV3(PointModule):
         ssm_fusion_weight=0.1,  # 与残差分支融合的初始权重
         enable_rfg=True,  # 默认启用残差特征门控，作为下一轮更保守的模型主体改进
         rfg_reduction=4,  # 门控MLP压缩比例，保持参数量轻量
-        rfg_stages=(0,),  # RFG_S03回到最高分辨率decoder stage，优先恢复跨文件稳定性
-        rfg_fusion_weight=0.07,  # 介于原始RFG 0.05与S01 0.08之间，保留增强但降低过拟合风险
+        rfg_stages=(0,),  # RFG_S04继续只作用最高分辨率decoder stage，优先保护跨文件稳定性
+        rfg_fusion_weight=0.07,  # 保留S03的整体融合强度，避免重新回到过弱增强
         rfg_stage_fusion_weights=None,  # 可选：按decoder stage指定RFG融合权重，默认仅stage 0生效
+        rfg_gate_limit=0.5,  # 对通道门控幅度做二次限幅，减少data2这类文件被过度重标定的风险
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -1237,9 +1247,10 @@ class PointTransformerV3(PointModule):
         self.rfg_stages = set(rfg_stages) if rfg_stages is not None else None
         self.rfg_reduction = rfg_reduction
         self.rfg_fusion_weight = rfg_fusion_weight
-        # RFG_S02的双stage策略仍然不稳定，且run14在固定文件上退化明显。
-        # RFG_S03回到单stage，只在最高分辨率解码特征上做轻量门控，
-        # 用0.07在原始RFG稳定性和S01的增强幅度之间取折中。
+        self.rfg_gate_limit = rfg_gate_limit
+        # RFG_S03说明单stage能改善shanqu2/data11，但data2仍被拉低。
+        # RFG_S04不再继续调全局权重，而是给通道门控本身加幅度上限，
+        # 让模型保留细节增强能力，同时降低少数通道过度重标定带来的跨文件波动。
         if rfg_stage_fusion_weights is None:
             rfg_stage_fusion_weights = {0: 0.07}
         self.rfg_stage_fusion_weights = {
@@ -1365,7 +1376,7 @@ class PointTransformerV3(PointModule):
 
                 if self.enable_rfg:
                     # RFG放在EMA之后，只对已融合的解码特征做轻量通道门控；
-                    # RFG_S03只作用于最高分辨率stage，避免双stage门控在固定文件上放大波动。
+                    # RFG_S04只作用于最高分辨率stage，并对门控幅度做限幅来保护data2稳定性。
                     use_rfg_here = (self.rfg_stages is None) or (s in self.rfg_stages)
                     if use_rfg_here:
                         rfg_fusion_weight = self.rfg_stage_fusion_weights.get(
@@ -1376,6 +1387,7 @@ class PointTransformerV3(PointModule):
                                 channels=dec_channels[s],
                                 reduction=self.rfg_reduction,
                                 fusion_weight=rfg_fusion_weight,
+                                gate_limit=self.rfg_gate_limit,
                             ),
                             name=f"rfg{s}"
                         )

@@ -59,7 +59,7 @@ PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
 CONFIG_PATH="config/seg/seg_pointtransformer_v3_EMA.yaml"
 RUN_ID="${RUN_ID:-1}"
 # 默认读取当前新实验前缀；如果要推理旧 RFG/SSM/GRN 结果，可传入对应 EXP_PREFIX。
-EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_RFG_S03}"
+EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_RFG_S04}"
 DEFAULT_MODEL_PATH="exp/seg/${EXP_PREFIX}_run${RUN_ID}/model/model_best.pth"
 MODEL_PATH="${MODEL_PATH:-${DEFAULT_MODEL_PATH}}"
 OUT_DIR="exp/seg/${EXP_PREFIX}_run${RUN_ID}/inference_results"

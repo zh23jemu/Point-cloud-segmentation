@@ -66,9 +66,9 @@ PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
 
 CONFIG_PATH="config/seg/seg_pointtransformer_v3_EMA.yaml"
 RUN_ID="${SLURM_ARRAY_TASK_ID:-1}"
-# 实验前缀默认切到 RFG_S03，表示当前主线为“EMA + 单最高分辨率stage残差特征门控”。
+# 实验前缀默认切到 RFG_S04，表示当前主线为“EMA + 单stage限幅残差特征门控”。
 # 如需复用旧 SSM/GRN 目录，可在 sbatch 时传入对应 EXP_PREFIX。
-EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_RFG_S03}"
+EXP_PREFIX="${EXP_PREFIX:-pointtransformer_v3_EMA_RFG_S04}"
 EXP_NAME="${EXP_PREFIX}_run${RUN_ID}"
 SAVE_PATH="exp/seg/${EXP_NAME}"
 
