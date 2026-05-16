@@ -806,13 +806,22 @@ class PointLocalContrastEnhancement(PointModule):
     稳定性设计：
     - 逐样本按 offset 处理，避免不同场景点数互相污染；
     - depthwise 1D 卷积只做通道内局部平滑，计算局部均值后取 residual contrast；
-    - 输出投影零初始化，使模块初始近似恒等映射，再由训练逐步学习局部边界增强。
+    - 输出投影零初始化，使模块初始近似恒等映射，再由训练逐步学习局部边界增强；
+    - S06 额外对 LCE 残差做幅度限幅，并降低默认融合权重，避免 S05 中 data2 被局部差分过度扰动。
     """
 
-    def __init__(self, channels, kernel_size=3, fusion_weight=0.04, eps=1e-6):
+    def __init__(
+        self,
+        channels,
+        kernel_size=3,
+        fusion_weight=0.015,
+        residual_limit=0.25,
+        eps=1e-6,
+    ):
         super().__init__()
         self.channels = channels
         self.eps = eps
+        self.residual_limit = residual_limit
         padding = kernel_size // 2
 
         self.norm = nn.GroupNorm(1, channels)
@@ -848,6 +857,11 @@ class PointLocalContrastEnhancement(PointModule):
         local_contrast = local_contrast / contrast_scale
 
         enhanced = self.out_proj(local_contrast)
+        if self.residual_limit is not None:
+            # S05 说明局部对比残差对 shanqu6/shanqu2/data11 有帮助，但会破坏 data2。
+            # 这里用 tanh 做软限幅，把 LCE 学到的点级残差限制在可控范围内，
+            # 让它更像 S04 稳定底座上的微调项，而不是重新主导 decoder 特征。
+            enhanced = torch.tanh(enhanced) * self.residual_limit
         x = x + self.fusion_weight * enhanced
         return x.squeeze(0).transpose(0, 1)
 
@@ -1258,10 +1272,11 @@ class PointTransformerV3(PointModule):
         rfg_fusion_weight=0.07,  # 保留S03的整体融合强度，避免重新回到过弱增强
         rfg_stage_fusion_weights=None,  # 可选：按decoder stage指定RFG融合权重，默认仅stage 0生效
         rfg_gate_limit=0.5,  # 对通道门控幅度做二次限幅，减少data2这类文件被过度重标定的风险
-        enable_lce=True,  # RFG_LCE_S05新增局部对比增强，补充固定文件上的局部边界细节
+        enable_lce=True,  # RFG_LCE_S06保留局部对比增强，但进一步降低强度以保护data2
         lce_stages=(0,),  # 只在最高分辨率decoder stage启用，避免低分辨率全局扰动
         lce_kernel_size=3,  # 小核局部差分，尽量贴近点序列邻域细节
-        lce_fusion_weight=0.04,  # 轻量残差注入，作为RFG_S04稳定底座上的小幅补充
+        lce_fusion_weight=0.015,  # S06弱融合，降低S05中data2被过度扰动的风险
+        lce_residual_limit=0.25,  # 对LCE输出残差做软限幅，进一步约束单点特征改动幅度
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -1345,6 +1360,7 @@ class PointTransformerV3(PointModule):
         self.lce_stages = set(lce_stages) if lce_stages is not None else None
         self.lce_kernel_size = lce_kernel_size
         self.lce_fusion_weight = lce_fusion_weight
+        self.lce_residual_limit = lce_residual_limit
 
         # encoder
         enc_drop_path = [
@@ -1490,6 +1506,7 @@ class PointTransformerV3(PointModule):
                                 channels=dec_channels[s],
                                 kernel_size=self.lce_kernel_size,
                                 fusion_weight=self.lce_fusion_weight,
+                                residual_limit=self.lce_residual_limit,
                             ),
                             name=f"lce{s}"
                         )
