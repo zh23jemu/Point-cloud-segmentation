@@ -794,6 +794,86 @@ class PointResidualFeatureGate(PointModule):
         return point
 
 
+class PointLocalContrastEnhancement(PointModule):
+    """
+    点云序列局部对比增强模块。
+
+    设计目标：
+    - RFG_S04 已经证明限幅门控能保护 data2，但整体提升幅度不足；
+    - 本模块不再继续调 RFG 权重，而是在最高分辨率 decoder stage 上补充轻量局部差分信号；
+    - 局部差分只来自当前样本自身的点序列特征，不使用标签、不改损失函数、不改分类头。
+
+    稳定性设计：
+    - 逐样本按 offset 处理，避免不同场景点数互相污染；
+    - depthwise 1D 卷积只做通道内局部平滑，计算局部均值后取 residual contrast；
+    - 输出投影零初始化，使模块初始近似恒等映射，再由训练逐步学习局部边界增强。
+    """
+
+    def __init__(self, channels, kernel_size=3, fusion_weight=0.04, eps=1e-6):
+        super().__init__()
+        self.channels = channels
+        self.eps = eps
+        padding = kernel_size // 2
+
+        self.norm = nn.GroupNorm(1, channels)
+        self.local_smooth = nn.Conv1d(
+            channels,
+            channels,
+            kernel_size=kernel_size,
+            padding=padding,
+            groups=channels,
+            bias=False,
+        )
+        self.out_proj = nn.Conv1d(channels, channels, kernel_size=1, bias=False)
+        self.fusion_weight = nn.Parameter(torch.tensor(fusion_weight))
+
+        # 平均初始化让 local_smooth 初始近似局部均值滤波，out_proj 零初始化保证整体先近似恒等。
+        nn.init.constant_(self.local_smooth.weight, 1.0 / kernel_size)
+        nn.init.zeros_(self.out_proj.weight)
+
+    def _enhance_single_sample(self, sample_feat):
+        """
+        输入形状：(N, C)
+        输出形状：(N, C)
+        """
+        x = sample_feat.transpose(0, 1).unsqueeze(0)  # (1, C, N)
+        x_norm = self.norm(x)
+        local_mean = self.local_smooth(x_norm)
+        local_contrast = x_norm - local_mean
+
+        # 用样本内 RMS 归一化局部差分，避免长文件或高响应通道把残差放大过头。
+        contrast_scale = torch.sqrt(
+            local_contrast.pow(2).mean(dim=-1, keepdim=True) + self.eps
+        )
+        local_contrast = local_contrast / contrast_scale
+
+        enhanced = self.out_proj(local_contrast)
+        x = x + self.fusion_weight * enhanced
+        return x.squeeze(0).transpose(0, 1)
+
+    def forward(self, point: Point):
+        assert {"feat", "offset"}.issubset(point.keys())
+        feat = point.feat
+        offset = point.offset
+        bincount = offset2bincount(offset)
+
+        output_list = []
+        start = 0
+        for cnt in bincount:
+            cnt = int(cnt)
+            end = start + cnt
+            sample_feat = feat[start:end]
+            if cnt > 0:
+                sample_feat = self._enhance_single_sample(sample_feat)
+            output_list.append(sample_feat)
+            start = end
+
+        point.feat = torch.cat(output_list, dim=0) if output_list else feat
+        if "sparse_conv_feat" in point.keys():
+            point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(point.feat)
+        return point
+
+
 class Block(PointModule):
     def __init__(
         self,
@@ -1178,6 +1258,10 @@ class PointTransformerV3(PointModule):
         rfg_fusion_weight=0.07,  # 保留S03的整体融合强度，避免重新回到过弱增强
         rfg_stage_fusion_weights=None,  # 可选：按decoder stage指定RFG融合权重，默认仅stage 0生效
         rfg_gate_limit=0.5,  # 对通道门控幅度做二次限幅，减少data2这类文件被过度重标定的风险
+        enable_lce=True,  # RFG_LCE_S05新增局部对比增强，补充固定文件上的局部边界细节
+        lce_stages=(0,),  # 只在最高分辨率decoder stage启用，避免低分辨率全局扰动
+        lce_kernel_size=3,  # 小核局部差分，尽量贴近点序列邻域细节
+        lce_fusion_weight=0.04,  # 轻量残差注入，作为RFG_S04稳定底座上的小幅补充
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -1257,6 +1341,10 @@ class PointTransformerV3(PointModule):
             int(stage): float(weight)
             for stage, weight in rfg_stage_fusion_weights.items()
         }
+        self.enable_lce = enable_lce
+        self.lce_stages = set(lce_stages) if lce_stages is not None else None
+        self.lce_kernel_size = lce_kernel_size
+        self.lce_fusion_weight = lce_fusion_weight
 
         # encoder
         enc_drop_path = [
@@ -1390,6 +1478,20 @@ class PointTransformerV3(PointModule):
                                 gate_limit=self.rfg_gate_limit,
                             ),
                             name=f"rfg{s}"
+                        )
+
+                if self.enable_lce:
+                    # LCE放在限幅RFG之后，只在最高分辨率stage补充局部差分信号。
+                    # 它不使用类别信息，只帮助 decoder 特征保留更清晰的局部边界变化。
+                    use_lce_here = (self.lce_stages is None) or (s in self.lce_stages)
+                    if use_lce_here:
+                        dec.add(
+                            PointLocalContrastEnhancement(
+                                channels=dec_channels[s],
+                                kernel_size=self.lce_kernel_size,
+                                fusion_weight=self.lce_fusion_weight,
+                            ),
+                            name=f"lce{s}"
                         )
 
                 if self.enable_ssm:
