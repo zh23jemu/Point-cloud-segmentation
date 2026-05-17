@@ -1,0 +1,21 @@
+============================================================
+PTv3 + EMA + RFG Slurm Training
+============================================================
+Host:        useast1-com-prod-gpu05
+Job ID:      33281081
+Array ID:    22
+Python:      .venv/bin/python
+Config:      config/seg/seg_pointtransformer_v3_EMA.yaml
+Save path:   exp/seg/pointtransformer_v3_EMA_RFG_LCE_S06_run22
+Submit dir:  /mnt/users/xj62kv/Point-cloud-segmentation
+Start time:  2026-05-16 10:15:02
+============================================================
+Totally 4 samples in train set.
+Totally 1 samples in val set.
+Totally 4 samples in train set.
+Totally 1 samples in val set.
+============================================================
+Finished time: 2026-05-16 20:21:10
+Best model:    exp/seg/pointtransformer_v3_EMA_RFG_LCE_S06_run22/model/model_best.pth
+Last model:    exp/seg/pointtransformer_v3_EMA_RFG_LCE_S06_run22/model/model_last.pth
+============================================================
