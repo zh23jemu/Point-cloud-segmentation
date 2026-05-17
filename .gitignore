@@ -46,6 +46,9 @@ exp/seg/**/inference_results/*.txt
 exp/seg/**/inference_results/*.npy
 runs/
 logs/
+!archives/rfg_lce_s05_run19_run20/slurm/logs/
+!archives/rfg_lce_s05_run19_run20/slurm/logs/*.out
+!archives/rfg_lce_s05_run19_run20/slurm/logs/*.err
 !slurm/logs/
 !slurm/logs/*.out
 !slurm/logs/*.err

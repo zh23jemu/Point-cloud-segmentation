@@ -1,0 +1,47 @@
+{
+  "archive_name": "rfg_lce_s05_run19_run20",
+  "created_at_local": "2026-05-17",
+  "purpose": "单独保存 RFG_LCE_S05 run19/run20 的配置快照和结果，避免当前 S06 主线覆盖实验语境。",
+  "source_commit_for_config_snapshot": "c120371",
+  "source_result_runs": [
+    "pointtransformer_v3_EMA_RFG_LCE_S05_run19",
+    "pointtransformer_v3_EMA_RFG_LCE_S05_run20"
+  ],
+  "training_job_id": "33274442",
+  "inference_job_ids": [
+    "33280740",
+    "33280741"
+  ],
+  "copied_files": [
+    "config_snapshot/model_pointtransformer_v3_S05.py",
+    "config_snapshot/seg_pointtransformer_v3_EMA_S05.yaml",
+    "config_snapshot/train_ptv3_ema_rfg_lce_s05_array.sbatch",
+    "config_snapshot/infer_results_files_s05.sbatch",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/best_results.txt",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/plots/loss_curves.png",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/plots/metrics_curves.png",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/plots/training_history.csv",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/plots/training_summary.png",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/inference_results/data2_formatted_downsampled (1)_infer.log",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/inference_results/shanqu6_final (1)_infer.log",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/inference_results/shanqu2_final (1)_infer.log",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run19/inference_results/data11_formatted_downsampled (1)_infer.log",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/best_results.txt",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/plots/loss_curves.png",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/plots/metrics_curves.png",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/plots/training_history.csv",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/plots/training_summary.png",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/inference_results/data2_formatted_downsampled (1)_infer.log",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/inference_results/shanqu6_final (1)_infer.log",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/inference_results/shanqu2_final (1)_infer.log",
+    "exp/seg/pointtransformer_v3_EMA_RFG_LCE_S05_run20/inference_results/data11_formatted_downsampled (1)_infer.log",
+    "slurm/logs/ptv3_ema_rfg_33274442_19.out",
+    "slurm/logs/ptv3_ema_rfg_33274442_19.err",
+    "slurm/logs/ptv3_ema_rfg_33274442_20.out",
+    "slurm/logs/ptv3_ema_rfg_33274442_20.err",
+    "slurm/logs/ptv3_rfg_infer_33280740.out",
+    "slurm/logs/ptv3_rfg_infer_33280740.err",
+    "slurm/logs/ptv3_rfg_infer_33280741.out",
+    "slurm/logs/ptv3_rfg_infer_33280741.err"
+  ]
+}
