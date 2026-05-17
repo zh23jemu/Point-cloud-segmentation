@@ -888,6 +888,93 @@ class PointLocalContrastEnhancement(PointModule):
         return point
 
 
+class PointRecallPreservingCalibrator(PointModule):
+    """
+    召回保护式特征校准模块。
+
+    设计动机：
+    - S05/S06 的 LCE 能让 shanqu6、shanqu2、data11 过线，但在 data2 上明显降低 class1 召回；
+    - 误差分析显示 data2 不是 class1 误报增多，而是预测 class1 点数减少、FN 增加；
+    - 因此 S07 不再使用点级局部差分，而改为更温和的样本级/通道级特征校准。
+
+    稳定性设计：
+    - 逐样本按 offset 独立处理，避免不同场景之间的统计量互相污染；
+    - 只根据当前样本特征的通道均值和标准差生成通道级 scale/bias，不接触类别 logits；
+    - 最后一层零初始化，模块初始为恒等映射，训练早期不破坏 S04 的稳定底座；
+    - scale 与 bias 都经过 tanh 软限幅，避免重新引入 S05/S06 那种过强扰动。
+    """
+
+    def __init__(
+        self,
+        channels,
+        reduction=4,
+        fusion_weight=0.03,
+        scale_limit=0.25,
+        bias_limit=0.10,
+        eps=1e-6,
+    ):
+        super().__init__()
+        self.channels = channels
+        self.eps = eps
+        self.scale_limit = scale_limit
+        self.bias_limit = bias_limit
+        hidden_channels = max(channels // reduction, 8)
+
+        # 使用样本级通道统计生成校准参数。输出拆成 scale 与 bias 两部分，
+        # 二者都只作用于 decoder 特征空间，不包含任何类别专用规则。
+        self.context_mlp = nn.Sequential(
+            nn.Linear(channels * 2, hidden_channels),
+            nn.GELU(),
+            nn.Linear(hidden_channels, channels * 2),
+        )
+        self.fusion_weight = nn.Parameter(torch.tensor(fusion_weight))
+
+        # 零初始化保证初始状态完全接近恒等映射；只有训练确认有收益时才逐步学习校准。
+        nn.init.zeros_(self.context_mlp[-1].weight)
+        nn.init.zeros_(self.context_mlp[-1].bias)
+
+    def forward(self, point: Point):
+        assert {"feat", "offset"}.issubset(point.keys())
+        feat = point.feat
+        offset = point.offset
+        bincount = offset2bincount(offset)
+
+        output_list = []
+        start = 0
+        for cnt in bincount:
+            cnt = int(cnt)
+            end = start + cnt
+            sample_feat = feat[start:end]
+            if cnt > 0:
+                # 每个样本独立估计统计量。normalized_feat 只用于稳定校准幅度，
+                # 不做局部邻域差分，避免再次把 data2 的 class1 边界吞掉。
+                mean = sample_feat.mean(dim=0, keepdim=True)
+                centered = sample_feat - mean
+                std = torch.sqrt(centered.pow(2).mean(dim=0, keepdim=True) + self.eps)
+                normalized_feat = centered / std
+
+                context = torch.cat([mean, std], dim=1)
+                scale_bias = self.context_mlp(context)
+                scale, bias = torch.chunk(scale_bias, 2, dim=1)
+                scale = torch.tanh(scale) * self.scale_limit
+                bias = torch.tanh(bias) * self.bias_limit
+
+                # bias 乘以 std 后回到原特征尺度；整体再乘可学习 fusion_weight，
+                # 让校准以小残差形式加入，优先保护召回而不是重写点级特征。
+                calibrated = sample_feat + self.fusion_weight * (
+                    normalized_feat * scale * std + bias * std
+                )
+                sample_feat = calibrated
+
+            output_list.append(sample_feat)
+            start = end
+
+        point.feat = torch.cat(output_list, dim=0) if output_list else feat
+        if "sparse_conv_feat" in point.keys():
+            point.sparse_conv_feat = point.sparse_conv_feat.replace_feature(point.feat)
+        return point
+
+
 class Block(PointModule):
     def __init__(
         self,
@@ -1272,11 +1359,17 @@ class PointTransformerV3(PointModule):
         rfg_fusion_weight=0.07,  # 保留S03的整体融合强度，避免重新回到过弱增强
         rfg_stage_fusion_weights=None,  # 可选：按decoder stage指定RFG融合权重，默认仅stage 0生效
         rfg_gate_limit=0.5,  # 对通道门控幅度做二次限幅，减少data2这类文件被过度重标定的风险
-        enable_lce=True,  # RFG_LCE_S06保留局部对比增强，但进一步降低强度以保护data2
+        enable_lce=False,  # S07停止使用LCE，避免继续压低data2的class1召回
         lce_stages=(0,),  # 只在最高分辨率decoder stage启用，避免低分辨率全局扰动
         lce_kernel_size=3,  # 小核局部差分，尽量贴近点序列邻域细节
         lce_fusion_weight=0.015,  # S06弱融合，降低S05中data2被过度扰动的风险
         lce_residual_limit=0.25,  # 对LCE输出残差做软限幅，进一步约束单点特征改动幅度
+        enable_rpfc=True,  # S07新增召回保护式特征校准，替代LCE做更温和的通道级校准
+        rpfc_stages=(0,),  # 仅作用最高分辨率decoder stage，集中修复细粒度召回问题
+        rpfc_reduction=4,  # 校准MLP压缩比例，保持参数量轻量
+        rpfc_fusion_weight=0.03,  # 小残差融合，避免重新破坏S04稳定底座
+        rpfc_scale_limit=0.25,  # 限制通道缩放幅度，防止过强重标定
+        rpfc_bias_limit=0.10,  # 限制通道平移幅度，降低误伤class0/class2风险
 
         cls_mode=False, 
         pdnorm_bn=False,
@@ -1361,6 +1454,12 @@ class PointTransformerV3(PointModule):
         self.lce_kernel_size = lce_kernel_size
         self.lce_fusion_weight = lce_fusion_weight
         self.lce_residual_limit = lce_residual_limit
+        self.enable_rpfc = enable_rpfc
+        self.rpfc_stages = set(rpfc_stages) if rpfc_stages is not None else None
+        self.rpfc_reduction = rpfc_reduction
+        self.rpfc_fusion_weight = rpfc_fusion_weight
+        self.rpfc_scale_limit = rpfc_scale_limit
+        self.rpfc_bias_limit = rpfc_bias_limit
 
         # encoder
         enc_drop_path = [
@@ -1509,6 +1608,22 @@ class PointTransformerV3(PointModule):
                                 residual_limit=self.lce_residual_limit,
                             ),
                             name=f"lce{s}"
+                        )
+
+                if self.enable_rpfc:
+                    # RPFC放在限幅RFG之后，替代LCE做样本级/通道级小幅校准。
+                    # 它不做局部差分，目标是恢复data2的class1召回，同时保持类别无关。
+                    use_rpfc_here = (self.rpfc_stages is None) or (s in self.rpfc_stages)
+                    if use_rpfc_here:
+                        dec.add(
+                            PointRecallPreservingCalibrator(
+                                channels=dec_channels[s],
+                                reduction=self.rpfc_reduction,
+                                fusion_weight=self.rpfc_fusion_weight,
+                                scale_limit=self.rpfc_scale_limit,
+                                bias_limit=self.rpfc_bias_limit,
+                            ),
+                            name=f"rpfc{s}"
                         )
 
                 if self.enable_ssm:
